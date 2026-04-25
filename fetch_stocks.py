@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.request
 from datetime import date
 import yfinance as yf
 
@@ -101,3 +102,28 @@ with open("index.html", "w") as f:
     f.write(index)
 
 print(f"Reports saved: {md_path}, {html_path}")
+
+# Telegram notification
+tg_token = os.environ.get("TELEGRAM_TOKEN")
+tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+if tg_token and tg_chat_id:
+    lines = [f"📈 *Stock Report — {today}*\n"]
+    for s in stocks:
+        if s["price"] is None:
+            lines.append(f"• *{s['ticker']}*: unavailable")
+        else:
+            arrow = "🟢" if s["change"] >= 0 else "🔴"
+            lines.append(f"{arrow} *{s['ticker']}*: ${s['price']:.2f} ({s['pct']:+.2f}%)")
+    lines.append(f"\n[Full report](https://allie0132.github.io/daily-stock-update/)")
+    msg = "\n".join(lines)
+    payload = json.dumps({"chat_id": tg_chat_id, "text": msg, "parse_mode": "Markdown"}).encode()
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{tg_token}/sendMessage",
+        data=payload,
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        urllib.request.urlopen(req)
+        print("Telegram notification sent.")
+    except Exception as e:
+        print(f"Telegram notification failed: {e}")
