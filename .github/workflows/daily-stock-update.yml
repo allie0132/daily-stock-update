@@ -1,0 +1,37 @@
+name: Daily Stock Update
+
+on:
+  schedule:
+    - cron: '0 12 * * 1-5'  # 8am ET (EDT), weekdays
+  workflow_dispatch:          # allow manual runs
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch stock prices and generate report
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python fetch_stocks.py
+
+      - name: Commit and push report
+        run: |
+          git config user.email "oarcl132@gmail.com"
+          git config user.name "allie0132"
+          git add daily-reports/ index.html
+          git diff --staged --quiet || git commit -m "report: daily stock update $(date +%Y-%m-%d)"
+          git push
