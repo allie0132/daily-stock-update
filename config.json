@@ -1,0 +1,4 @@
+{
+  "tickers": ["AAPL", "TSLA", "MSFT", "GOOGL", "SPY"],
+  "currency": "USD"
+}
