@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Stock Summary</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #0f1117; color: #e2e8f0; padding: 16px; }
+  h1 { font-size: 1.3rem; font-weight: 700; color: #f8fafc; }
+  .date { font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px; }
+  .section-title { font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
+                    text-transform: uppercase; color: #64748b; margin: 20px 0 10px; }
+  .card { background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .card-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ticker { font-size: 1.1rem; font-weight: 700; color: #f8fafc; min-width: 60px; }
+  .price { font-size: 1.1rem; font-weight: 600; color: #cbd5e1; flex: 1; }
+  .change { font-size: 1rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+  .up { color: #4ade80; background: #14532d33; }
+  .down { color: #f87171; background: #7f1d1d33; }
+  .neutral { color: #94a3b8; }
+  .range-wrap { display: flex; align-items: center; gap: 6px; margin-top: 10px;
+                 font-size: 0.75rem; color: #64748b; flex-wrap: wrap; }
+  .range-bar { flex: 1; min-width: 80px; height: 6px; background: #334155;
+                border-radius: 3px; overflow: hidden; }
+  .range-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+                 border-radius: 3px; }
+  .range-pct { color: #94a3b8; font-size: 0.72rem; }
+  .target { margin-top: 8px; font-size: 0.8rem; color: #94a3b8; }
+  .target.up span { color: #4ade80; }
+  .target.down span { color: #f87171; }
+  .news-list { list-style: none; }
+  .news-list li { padding: 10px 0; border-bottom: 1px solid #1e2330; font-size: 0.85rem; line-height: 1.5; }
+  .news-list li:last-child { border-bottom: none; }
+  .news-ticker { color: #60a5fa; font-weight: 600; margin-right: 4px; }
+  a { color: #e2e8f0; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .publisher { color: #64748b; }
+  .disclaimer { margin-top: 20px; font-size: 0.73rem; color: #475569;
+                 border-top: 1px solid #1e2330; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>📊 Daily Stock Summary</h1>
+  <div class="date">Saturday, Apr 25 2026 · 08:42 PM ET</div>
+
+  <div class="section-title">💼 Watchlist</div>
+  <div class="card">
+      <div class="card-header">
+        <span class="ticker">AAPL</span>
+        <span class="price">$271.06</span>
+        <span class="change down">▼ -0.60%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$193.25</span>
+        <div class="range-bar"><div class="range-fill" style="width:81.6%"></div></div>
+        <span class="range-label">$288.62</span>
+        <span class="range-pct">82%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $297.71 <span>(+9.83% upside)</span></div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">MSFT</span>
+        <span class="price">$424.62</span>
+        <span class="change up">▲ +1.43%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$356.28</span>
+        <div class="range-bar"><div class="range-fill" style="width:34.3%"></div></div>
+        <span class="range-label">$555.45</span>
+        <span class="range-pct">34%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $576.42 <span>(+35.75% upside)</span></div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">GOOGL</span>
+        <span class="price">$344.40</span>
+        <span class="change up">▲ +1.37%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$147.84</span>
+        <div class="range-bar"><div class="range-fill" style="width:97.7%"></div></div>
+        <span class="range-label">$349.00</span>
+        <span class="range-pct">98%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $377.29 <span>(+9.55% upside)</span></div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">AMZN</span>
+        <span class="price">$263.99</span>
+        <span class="change up">▲ +3.42%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$178.85</span>
+        <div class="range-bar"><div class="range-fill" style="width:99.4%"></div></div>
+        <span class="range-label">$264.50</span>
+        <span class="range-pct">99%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $283.79 <span>(+7.50% upside)</span></div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">META</span>
+        <span class="price">$675.03</span>
+        <span class="change up">▲ +2.17%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$520.26</span>
+        <div class="range-bar"><div class="range-fill" style="width:56.1%"></div></div>
+        <span class="range-label">$796.25</span>
+        <span class="range-pct">56%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $855.11 <span>(+26.68% upside)</span></div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">NVDA</span>
+        <span class="price">$208.27</span>
+        <span class="change up">▲ +4.40%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$104.08</span>
+        <div class="range-bar"><div class="range-fill" style="width:96.4%"></div></div>
+        <span class="range-label">$212.19</span>
+        <span class="range-pct">96%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $268.61 <span>(+28.97% upside)</span></div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">TSLA</span>
+        <span class="price">$376.30</span>
+        <span class="change up">▲ +0.84%</span>
+      </div>
+      <div class="range-wrap">
+        <span class="range-label">$270.78</span>
+        <div class="range-bar"><div class="range-fill" style="width:46.3%"></div></div>
+        <span class="range-label">$498.83</span>
+        <span class="range-pct">46%</span>
+      </div>
+      <div class="target up">🎯 Analyst target: $418.38 <span>(+11.18% upside)</span></div>
+    </div>
+
+  <div class="section-title">📰 Top Headlines</div>
+  <ul class="news-list">
+    <li><span class="news-ticker">[AAPL]</span> <a href="https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-apple-amazon-google-earnings-ai-iran-talks/?src=A00220&yptr=yahoo" target="_blank">Dow Jones Futures: Iran Talks Off; Apple, Amazon, Google Lead Earnings Wave</a><span class="publisher"> — Investor's Business Daily</span></li><li><span class="news-ticker">[AAPL]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/look-skyworks-solutions-swks-valuation-170510668.html" target="_blank">A Look At Skyworks Solutions (SWKS) Valuation After Barclays Upgrade And Apple Device Delay</a><span class="publisher"> — Simply Wall St.</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://www.fool.com/investing/2026/04/25/the-720-billion-capex-trap-2-artificial-intelligen/" target="_blank">The $720 Billion Capex Trap: 2 Artificial Intelligence (AI) Hyperscalers Spending on Growth While the Rest Spend on Maintenance</a><span class="publisher"> — Motley Fool</span></li><li><span class="news-ticker">[GOOGL]</span> <a href="https://finance.yahoo.com/sectors/technology/article/nvidia-stock-clinches-record-close-pushing-market-cap-over-5-trillion-once-again-173529477.html" target="_blank">Nvidia stock clinches record close, pushing market cap over $5 trillion once again</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[NVDA]</span> <a href="https://www.fool.com/investing/2026/04/25/got-10000-lockheed-martin-could-be-a-defense-power/" target="_blank">Got $10,000? Lockheed Martin Could Be a Defense Powerhouse That Outlasts Trump's Term</a><span class="publisher"> — Motley Fool</span></li><li><span class="news-ticker">[TSLA]</span> <a href="https://www.thestreet.com/investing/stocks/morgan-stanley-issues-blunt-take-on-tesla-stock-after-earnings" target="_blank">Morgan Stanley issues blunt take on Tesla stock after earnings</a><span class="publisher"> — TheStreet</span></li><li><span class="news-ticker">[TSLA]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/intel-ceo-lip-bu-tan-220110581.html" target="_blank">Intel CEO Lip-Bu Tan Is Excited About Partnering With Tesla On 14A Chips: 'Can Think Of No Better Partner' Than Elon Musk</a><span class="publisher"> — Benzinga</span></li>
+  </ul>
+
+  <p class="disclaimer">⚠️ Analyst targets are Wall Street consensus estimates via Yahoo Finance. Not investment advice.</p>
+</body>
+</html>
