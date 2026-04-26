@@ -15,6 +15,11 @@ date_str = now_et.strftime("%A, %b %d %Y · %I:%M %p ET")
 report_dir = "daily-reports"
 os.makedirs(report_dir, exist_ok=True)
 
+# Remove previous reports
+for f in os.listdir(report_dir):
+    if f.endswith(".html") or f.endswith(".md"):
+        os.remove(os.path.join(report_dir, f))
+
 stocks = []
 all_news = []
 
@@ -218,7 +223,7 @@ if tg_token and tg_chat_id:
             if s["target"]:
                 line += f" | 🎯 ${s['target']:.2f} ({s['upside']:+.1f}%)"
             lines.append(line)
-    lines.append(f"\n[Full report](https://allie0132.github.io/daily-stock-update/)")
+    lines.append(f"\n[Full report](https://allie0132.github.io/daily-stock-update/daily-reports/{today}.html)")
     msg = "\n".join(lines)
     payload = json.dumps({"chat_id": tg_chat_id, "text": msg, "parse_mode": "Markdown"}).encode()
     req = urllib.request.Request(
