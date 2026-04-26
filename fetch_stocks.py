@@ -1,7 +1,8 @@
 import json
 import os
 import urllib.request
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import yfinance as yf
 
 with open("config.json") as f:
@@ -9,54 +10,65 @@ with open("config.json") as f:
 
 tickers = config["tickers"]
 today = date.today().isoformat()
+now_et = datetime.now(ZoneInfo("America/New_York"))
+date_str = now_et.strftime("%A, %b %d %Y · %I:%M %p ET")
 report_dir = "daily-reports"
 os.makedirs(report_dir, exist_ok=True)
 
 stocks = []
+all_news = []
+
 for ticker in tickers:
     try:
         t = yf.Ticker(ticker)
-        fast = t.fast_info
         info = t.info
-        hist = t.history(period="1mo")
+        fast = t.fast_info
 
         price = fast.last_price
         prev = fast.previous_close
         change = price - prev
         pct = (change / prev) * 100
 
-        # 1-month trend
-        if len(hist) >= 2:
-            month_start = hist["Close"].iloc[0]
-            month_pct = (price - month_start) / month_start * 100
+        low52 = info.get("fiftyTwoWeekLow")
+        high52 = info.get("fiftyTwoWeekHigh")
+        if low52 and high52 and high52 > low52:
+            range_pct = (price - low52) / (high52 - low52) * 100
         else:
-            month_pct = None
+            range_pct = None
 
-        # Analyst target price
         target = info.get("targetMeanPrice")
-        target_high = info.get("targetHighPrice")
-        target_low = info.get("targetLowPrice")
         upside = ((target - price) / price * 100) if target else None
-        recommendation = info.get("recommendationKey", "").replace("_", " ").title()
+
+        # Collect news
+        try:
+            news = t.news or []
+            for item in news[:2]:
+                meta = item.get("content", {})
+                title = meta.get("title", "")
+                url = meta.get("canonicalUrl", {}).get("url", "") or meta.get("clickThroughUrl", {}).get("url", "")
+                publisher = meta.get("provider", {}).get("displayName", "")
+                if title and url:
+                    all_news.append({"ticker": ticker, "title": title, "url": url, "publisher": publisher})
+        except Exception:
+            pass
 
         stocks.append({
             "ticker": ticker,
             "price": price,
             "change": change,
             "pct": pct,
-            "month_pct": month_pct,
+            "low52": low52,
+            "high52": high52,
+            "range_pct": range_pct,
             "target": target,
-            "target_high": target_high,
-            "target_low": target_low,
             "upside": upside,
-            "recommendation": recommendation,
         })
     except Exception as e:
         print(f"Warning: failed to fetch {ticker}: {e}")
         stocks.append({
             "ticker": ticker, "price": None, "change": None, "pct": None,
-            "month_pct": None, "target": None, "target_high": None,
-            "target_low": None, "upside": None, "recommendation": None,
+            "low52": None, "high52": None, "range_pct": None,
+            "target": None, "upside": None,
         })
 
 # Markdown report
@@ -67,83 +79,113 @@ for s in stocks:
     else:
         arrow = "▲" if s["change"] >= 0 else "▼"
         line = f"- **{s['ticker']}**: ${s['price']:.2f} {arrow} {s['pct']:+.2f}%"
-        if s["month_pct"] is not None:
-            line += f" | 1M: {s['month_pct']:+.2f}%"
         if s["target"]:
             line += f" | Target: ${s['target']:.2f} ({s['upside']:+.1f}%)"
-        if s["recommendation"]:
-            line += f" | {s['recommendation']}"
         md_lines.append(line)
 
 md_path = os.path.join(report_dir, f"{today}.md")
 with open(md_path, "w") as f:
     f.write("\n".join(md_lines) + "\n")
 
-# HTML report
-def trend_badge(pct):
-    if pct is None:
-        return '<span class="na">—</span>'
-    color = "#16a34a" if pct >= 0 else "#dc2626"
-    return f'<span style="color:{color}">{pct:+.2f}%</span>'
-
-def row_html(s):
+# HTML cards
+def card_html(s):
     if s["price"] is None:
-        return f'<tr><td class="ticker">{s["ticker"]}</td><td colspan="6" class="na">unavailable</td></tr>'
-    color = "#16a34a" if s["change"] >= 0 else "#dc2626"
-    arrow = "▲" if s["change"] >= 0 else "▼"
-    target_cell = f'${s["target"]:.2f}' if s["target"] else '<span class="na">—</span>'
-    upside_cell = trend_badge(s["upside"])
-    rec = s["recommendation"] or "—"
-    rec_color = {"Buy": "#16a34a", "Strong Buy": "#15803d", "Hold": "#d97706",
-                 "Sell": "#dc2626", "Underperform": "#dc2626"}.get(rec, "#6b7280")
-    return (
-        f'<tr>'
-        f'<td class="ticker">{s["ticker"]}</td>'
-        f'<td class="price">${s["price"]:.2f}</td>'
-        f'<td style="color:{color}">{arrow} {s["pct"]:+.2f}%</td>'
-        f'<td>{trend_badge(s["month_pct"])}</td>'
-        f'<td>{target_cell}</td>'
-        f'<td>{upside_cell}</td>'
-        f'<td style="color:{rec_color};font-size:0.8rem">{rec}</td>'
-        f'</tr>'
-    )
+        return f'''<div class="card"><div class="card-header"><span class="ticker">{s["ticker"]}</span><span class="neutral">unavailable</span></div></div>'''
 
-rows = "\n".join(row_html(s) for s in stocks)
+    up = s["change"] >= 0
+    arrow = "▲" if up else "▼"
+    change_cls = "up" if up else "down"
+
+    range_html = ""
+    if s["range_pct"] is not None:
+        rp = min(max(s["range_pct"], 0), 100)
+        range_html = f'''
+      <div class="range-wrap">
+        <span class="range-label">${s["low52"]:.2f}</span>
+        <div class="range-bar"><div class="range-fill" style="width:{rp:.1f}%"></div></div>
+        <span class="range-label">${s["high52"]:.2f}</span>
+        <span class="range-pct">{rp:.0f}%</span>
+      </div>'''
+
+    target_html = ""
+    if s["target"]:
+        t_cls = "up" if s["upside"] >= 0 else "down"
+        target_html = f'<div class="target {t_cls}">🎯 Analyst target: ${s["target"]:.2f} <span>({s["upside"]:+.2f}% upside)</span></div>'
+
+    return f'''<div class="card">
+      <div class="card-header">
+        <span class="ticker">{s["ticker"]}</span>
+        <span class="price">${s["price"]:.2f}</span>
+        <span class="change {change_cls}">{arrow} {s["pct"]:+.2f}%</span>
+      </div>{range_html}
+      {target_html}
+    </div>'''
+
+cards = "\n".join(card_html(s) for s in stocks)
+
+news_items = ""
+seen = set()
+for n in all_news:
+    if n["url"] not in seen:
+        seen.add(n["url"])
+        news_items += f'<li><span class="news-ticker">[{n["ticker"]}]</span> <a href="{n["url"]}" target="_blank">{n["title"]}</a><span class="publisher"> — {n["publisher"]}</span></li>'
+
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stock Report — {today}</title>
+<title>Daily Stock Summary</title>
 <style>
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         max-width: 680px; margin: 40px auto; padding: 0 16px; background: #0f172a; color: #e2e8f0; }}
-  h1 {{ font-size: 1.2rem; color: #94a3b8; margin-bottom: 4px; }}
-  p.date {{ color: #475569; font-size: 0.85rem; margin: 0 0 20px; }}
-  table {{ width: 100%; border-collapse: collapse; background: #1e293b;
-           border-radius: 10px; overflow: hidden;
-           box-shadow: 0 1px 8px rgba(0,0,0,0.4); }}
-  th {{ background: #0f172a; color: #64748b; padding: 10px 12px; text-align: left; font-size: 0.75rem; white-space: nowrap; letter-spacing: 0.05em; text-transform: uppercase; }}
-  td {{ padding: 11px 12px; border-bottom: 1px solid #0f172a; font-size: 0.9rem; white-space: nowrap; }}
-  tr:last-child td {{ border-bottom: none; }}
-  tr:hover td {{ background: #273449; }}
-  .ticker {{ font-weight: 700; letter-spacing: 0.03em; color: #f1f5f9; }}
-  .price {{ font-weight: 600; color: #f1f5f9; }}
-  .na {{ color: #475569; font-style: italic; }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #0f1117; color: #e2e8f0; padding: 16px; }}
+  h1 {{ font-size: 1.3rem; font-weight: 700; color: #f8fafc; }}
+  .date {{ font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px; }}
+  .section-title {{ font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
+                    text-transform: uppercase; color: #64748b; margin: 20px 0 10px; }}
+  .card {{ background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }}
+  .card-header {{ display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }}
+  .ticker {{ font-size: 1.1rem; font-weight: 700; color: #f8fafc; min-width: 60px; }}
+  .price {{ font-size: 1.1rem; font-weight: 600; color: #cbd5e1; flex: 1; }}
+  .change {{ font-size: 1rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; }}
+  .up {{ color: #4ade80; background: #14532d33; }}
+  .down {{ color: #f87171; background: #7f1d1d33; }}
+  .neutral {{ color: #94a3b8; }}
+  .range-wrap {{ display: flex; align-items: center; gap: 6px; margin-top: 10px;
+                 font-size: 0.75rem; color: #64748b; flex-wrap: wrap; }}
+  .range-bar {{ flex: 1; min-width: 80px; height: 6px; background: #334155;
+                border-radius: 3px; overflow: hidden; }}
+  .range-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+                 border-radius: 3px; }}
+  .range-pct {{ color: #94a3b8; font-size: 0.72rem; }}
+  .target {{ margin-top: 8px; font-size: 0.8rem; color: #94a3b8; }}
+  .target.up span {{ color: #4ade80; }}
+  .target.down span {{ color: #f87171; }}
+  .news-list {{ list-style: none; }}
+  .news-list li {{ padding: 10px 0; border-bottom: 1px solid #1e2330; font-size: 0.85rem; line-height: 1.5; }}
+  .news-list li:last-child {{ border-bottom: none; }}
+  .news-ticker {{ color: #60a5fa; font-weight: 600; margin-right: 4px; }}
+  a {{ color: #e2e8f0; text-decoration: none; }}
+  a:hover {{ text-decoration: underline; }}
+  .publisher {{ color: #64748b; }}
+  .disclaimer {{ margin-top: 20px; font-size: 0.73rem; color: #475569;
+                 border-top: 1px solid #1e2330; padding-top: 12px; }}
 </style>
 </head>
 <body>
-<h1>Daily Stock Report</h1>
-<p class="date">{today}</p>
-<table>
-<thead><tr>
-  <th>Ticker</th><th>Price</th><th>Day</th><th>1 Month</th>
-  <th>Target</th><th>Upside</th><th>Rating</th>
-</tr></thead>
-<tbody>
-{rows}
-</tbody>
-</table>
+  <h1>📊 Daily Stock Summary</h1>
+  <div class="date">{date_str}</div>
+
+  <div class="section-title">💼 Watchlist</div>
+  {cards}
+
+  <div class="section-title">📰 Top Headlines</div>
+  <ul class="news-list">
+    {news_items}
+  </ul>
+
+  <p class="disclaimer">⚠️ Analyst targets are Wall Street consensus estimates via Yahoo Finance. Not investment advice.</p>
 </body>
 </html>"""
 
@@ -166,15 +208,13 @@ print(f"Reports saved: {md_path}, {html_path}")
 tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
-    lines = [f"📈 *Stock Report — {today}*\n"]
+    lines = [f"📊 *Stock Summary — {today}*\n"]
     for s in stocks:
         if s["price"] is None:
             lines.append(f"• *{s['ticker']}*: unavailable")
         else:
             arrow = "🟢" if s["change"] >= 0 else "🔴"
             line = f"{arrow} *{s['ticker']}*: ${s['price']:.2f} ({s['pct']:+.2f}%)"
-            if s["month_pct"] is not None:
-                line += f" | 1M: {s['month_pct']:+.2f}%"
             if s["target"]:
                 line += f" | 🎯 ${s['target']:.2f} ({s['upside']:+.1f}%)"
             lines.append(line)
