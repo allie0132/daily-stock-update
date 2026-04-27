@@ -1,4 +1,4 @@
 {
-  "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA"],
+  "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "MU", "INTC", "AMD"],
   "currency": "USD"
 }
