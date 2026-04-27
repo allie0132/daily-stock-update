@@ -47,15 +47,16 @@ for ticker in tickers:
 
         # 1-month history + 1-week change
         week_pct = None
-        chart_dates = []
-        chart_prices = []
+        chart_data = {"1mo": {"dates": [], "prices": []}, "3mo": {"dates": [], "prices": []}, "6mo": {"dates": [], "prices": []}}
         try:
-            hist = t.history(period="1mo")
-            if len(hist) >= 2:
-                week_start = hist["Close"].iloc[-6] if len(hist) >= 6 else hist["Close"].iloc[0]
+            hist6 = t.history(period="6mo")
+            if len(hist6) >= 2:
+                for period, n in [("6mo", None), ("3mo", 63), ("1mo", 21)]:
+                    h = hist6.iloc[-n:] if n else hist6
+                    chart_data[period]["dates"] = [d.strftime("%b %d") for d in h.index]
+                    chart_data[period]["prices"] = [round(float(p), 2) for p in h["Close"]]
+                week_start = hist6["Close"].iloc[-6] if len(hist6) >= 6 else hist6["Close"].iloc[0]
                 week_pct = (price - week_start) / week_start * 100
-                chart_dates = [d.strftime("%b %d") for d in hist.index]
-                chart_prices = [round(float(p), 2) for p in hist["Close"]]
         except Exception:
             pass
 
@@ -81,7 +82,7 @@ for ticker in tickers:
             "low52": low52, "high52": high52, "range_pct": range_pct,
             "target": target, "upside": upside,
             "week_pct": week_pct, "high_volume": high_volume,
-            "chart_dates": chart_dates, "chart_prices": chart_prices,
+            "chart_data": chart_data,
         })
     except Exception as e:
         print(f"Warning: failed to fetch {ticker}: {e}")
@@ -89,7 +90,7 @@ for ticker in tickers:
             "ticker": ticker, "price": None, "change": None, "pct": None,
             "low52": None, "high52": None, "range_pct": None,
             "target": None, "upside": None, "week_pct": None, "high_volume": False,
-            "chart_dates": [], "chart_prices": [],
+            "chart_data": {"1mo": {"dates": [], "prices": []}, "3mo": {"dates": [], "prices": []}, "6mo": {"dates": [], "prices": []}},
         })
 
 # Markdown
@@ -160,38 +161,47 @@ def card_html(s):
       </div>'''
 
     chart_html = ""
-    if s["chart_prices"]:
-        ticker_id = s["ticker"].replace(".", "_")
-        color = "#64748b"
+    if s["chart_data"]["1mo"]["prices"]:
+        tid = s["ticker"].replace(".", "_")
         chart_html = f'''
       <div class="chart-section">
-        <div class="chart-label">1-Month Price History</div>
-        <canvas id="chart_{ticker_id}" height="80"></canvas>
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('{tid}','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('{tid}','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('{tid}','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_{tid}" height="80"></canvas>
         <script>
           (function() {{
-            var ctx = document.getElementById("chart_{ticker_id}").getContext("2d");
-            new Chart(ctx, {{
+            window._sd = window._sd || {{}};
+            window._sd["{tid}"] = {json.dumps(s["chart_data"])};
+            var ctx = document.getElementById("chart_{tid}").getContext("2d");
+            window._charts = window._charts || {{}};
+            window._charts["{tid}"] = new Chart(ctx, {{
               type: "line",
               data: {{
-                labels: {json.dumps(s["chart_dates"])},
+                labels: {json.dumps(s["chart_data"]["1mo"]["dates"])},
                 datasets: [{{
-                  data: {json.dumps(s["chart_prices"])},
-                  borderColor: "{color}",
+                  data: {json.dumps(s["chart_data"]["1mo"]["prices"])},
+                  borderColor: "#334155",
                   borderWidth: 1.5,
                   pointRadius: 0,
                   tension: 0.3,
                   fill: true,
-                  backgroundColor: "{color}18"
+                  backgroundColor: "#33415520"
                 }}]
               }},
               options: {{
                 animation: false,
                 plugins: {{ legend: {{ display: false }}, tooltip: {{
-                  callbacks: {{ label: ctx => "$" + ctx.parsed.y.toFixed(2) }}
+                  callbacks: {{ label: c => "$" + c.parsed.y.toFixed(2) }}
                 }} }},
                 scales: {{
-                  x: {{ grid: {{ display: false }}, ticks: {{ maxTicksLimit: 5, color: "#475569", font: {{ size: 9 }} }} }},
-                  y: {{ grid: {{ color: "#1e293b" }}, ticks: {{ color: "#475569", font: {{ size: 9 }},
+                  x: {{ grid: {{ display: false }}, ticks: {{ maxTicksLimit: 5, color: "#334155", font: {{ size: 9 }} }} }},
+                  y: {{ grid: {{ color: "#1a2236" }}, ticks: {{ color: "#334155", font: {{ size: 9 }},
                          callback: v => "$" + v }} }}
                 }}
               }}
@@ -298,8 +308,13 @@ html = f"""<!DOCTYPE html>
   .range-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 3px; }}
   .range-val {{ font-size: 0.68rem; color: #64748b; text-align: center; line-height: 1.3; }}
   .chart-section {{ margin-top: 12px; }}
-  .chart-label {{ font-size: 0.68rem; color: #64748b; text-transform: uppercase;
-                  letter-spacing: .06em; margin-bottom: 6px; }}
+  .chart-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }}
+  .chart-label {{ font-size: 0.68rem; color: #475569; text-transform: uppercase; letter-spacing: .06em; }}
+  .chart-btns {{ display: flex; gap: 4px; }}
+  .cbtn {{ background: #0f1117; border: 1px solid #1e293b; color: #475569; font-size: 0.7rem;
+            font-weight: 600; padding: 2px 7px; border-radius: 4px; cursor: pointer; }}
+  .cbtn.active {{ background: #1e293b; color: #94a3b8; border-color: #334155; }}
+  .cbtn:hover {{ color: #cbd5e1; }}
   .news-list {{ list-style: none; }}
   .news-list li {{ padding: 10px 0; border-bottom: 1px solid #1e2330;
                    font-size: 0.85rem; line-height: 1.5; }}
@@ -320,6 +335,14 @@ html = f"""<!DOCTYPE html>
   <div class="section-title">📰 Top Headlines</div>
   <ul class="news-list">{news_items}</ul>
   <p class="disclaimer">⚠️ Analyst targets are Wall Street consensus estimates via Yahoo Finance. Not investment advice.</p>
+  <script>
+    function setPeriod(tid, period, btn) {{
+      var c = window._charts[tid]; var d = window._sd[tid][period];
+      c.data.labels = d.dates; c.data.datasets[0].data = d.prices; c.update();
+      btn.closest('.chart-btns').querySelectorAll('.cbtn').forEach(function(b) {{ b.classList.remove('active'); }});
+      btn.classList.add('active');
+    }}
+  </script>
 </body>
 </html>"""
 
