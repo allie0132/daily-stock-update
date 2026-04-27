@@ -45,13 +45,17 @@ for ticker in tickers:
         target = info.get("targetMeanPrice")
         upside = ((target - price) / price * 100) if target else None
 
-        # 1-week change
+        # 1-month history + 1-week change
         week_pct = None
+        chart_dates = []
+        chart_prices = []
         try:
-            hist = t.history(period="5d")
+            hist = t.history(period="1mo")
             if len(hist) >= 2:
-                week_start = hist["Close"].iloc[0]
+                week_start = hist["Close"].iloc[-6] if len(hist) >= 6 else hist["Close"].iloc[0]
                 week_pct = (price - week_start) / week_start * 100
+                chart_dates = [d.strftime("%b %d") for d in hist.index]
+                chart_prices = [round(float(p), 2) for p in hist["Close"]]
         except Exception:
             pass
 
@@ -77,6 +81,7 @@ for ticker in tickers:
             "low52": low52, "high52": high52, "range_pct": range_pct,
             "target": target, "upside": upside,
             "week_pct": week_pct, "high_volume": high_volume,
+            "chart_dates": chart_dates, "chart_prices": chart_prices,
         })
     except Exception as e:
         print(f"Warning: failed to fetch {ticker}: {e}")
@@ -84,6 +89,7 @@ for ticker in tickers:
             "ticker": ticker, "price": None, "change": None, "pct": None,
             "low52": None, "high52": None, "range_pct": None,
             "target": None, "upside": None, "week_pct": None, "high_volume": False,
+            "chart_dates": [], "chart_prices": [],
         })
 
 # Markdown
@@ -153,6 +159,47 @@ def card_html(s):
         </div>
       </div>'''
 
+    chart_html = ""
+    if s["chart_prices"]:
+        ticker_id = s["ticker"].replace(".", "_")
+        color = "#4ade80" if up else "#f87171"
+        chart_html = f'''
+      <div class="chart-section">
+        <div class="chart-label">1-Month Price History</div>
+        <canvas id="chart_{ticker_id}" height="80"></canvas>
+        <script>
+          (function() {{
+            var ctx = document.getElementById("chart_{ticker_id}").getContext("2d");
+            new Chart(ctx, {{
+              type: "line",
+              data: {{
+                labels: {json.dumps(s["chart_dates"])},
+                datasets: [{{
+                  data: {json.dumps(s["chart_prices"])},
+                  borderColor: "{color}",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "{color}18"
+                }}]
+              }},
+              options: {{
+                animation: false,
+                plugins: {{ legend: {{ display: false }}, tooltip: {{
+                  callbacks: {{ label: ctx => "$" + ctx.parsed.y.toFixed(2) }}
+                }} }},
+                scales: {{
+                  x: {{ grid: {{ display: false }}, ticks: {{ maxTicksLimit: 5, color: "#475569", font: {{ size: 9 }} }} }},
+                  y: {{ grid: {{ color: "#1e293b" }}, ticks: {{ color: "#475569", font: {{ size: 9 }},
+                         callback: v => "$" + v }} }}
+                }}
+              }}
+            }});
+          }})();
+        </script>
+      </div>'''
+
     return f'''<div class="card">
       <div class="card-header">
         <span class="ticker">{s["ticker"]}</span>
@@ -160,6 +207,7 @@ def card_html(s):
         {vol_badge}
       </div>
       {metrics_html}
+      {chart_html}
       {range_html}
     </div>'''
 
@@ -206,6 +254,7 @@ html = f"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Stock Summary</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -248,6 +297,9 @@ html = f"""<!DOCTYPE html>
   .range-bar {{ flex: 1; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; }}
   .range-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 3px; }}
   .range-val {{ font-size: 0.68rem; color: #64748b; text-align: center; line-height: 1.3; }}
+  .chart-section {{ margin-top: 12px; }}
+  .chart-label {{ font-size: 0.68rem; color: #64748b; text-transform: uppercase;
+                  letter-spacing: .06em; margin-bottom: 6px; }}
   .news-list {{ list-style: none; }}
   .news-list li {{ padding: 10px 0; border-bottom: 1px solid #1e2330;
                    font-size: 0.85rem; line-height: 1.5; }}
