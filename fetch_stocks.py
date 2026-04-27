@@ -186,12 +186,12 @@ def card_html(s):
                 labels: {json.dumps(s["chart_data"]["1mo"]["dates"])},
                 datasets: [{{
                   data: {json.dumps(s["chart_data"]["1mo"]["prices"])},
-                  borderColor: "#334155",
+                  borderColor: "#475569",
                   borderWidth: 1.5,
                   pointRadius: 0,
                   tension: 0.3,
                   fill: true,
-                  backgroundColor: "#33415520"
+                  backgroundColor: "#47556920"
                 }}]
               }},
               options: {{
@@ -200,8 +200,8 @@ def card_html(s):
                   callbacks: {{ label: c => "$" + c.parsed.y.toFixed(2) }}
                 }} }},
                 scales: {{
-                  x: {{ grid: {{ display: false }}, ticks: {{ maxTicksLimit: 5, color: "#334155", font: {{ size: 9 }} }} }},
-                  y: {{ grid: {{ color: "#1a2236" }}, ticks: {{ color: "#334155", font: {{ size: 9 }},
+                  x: {{ grid: {{ display: false }}, ticks: {{ maxTicksLimit: 5, color: "#475569", font: {{ size: 9 }} }} }},
+                  y: {{ grid: {{ color: "#1a2236" }}, ticks: {{ color: "#475569", font: {{ size: 9 }},
                          callback: v => "$" + v }} }}
                 }}
               }}
@@ -276,7 +276,7 @@ html = f"""<!DOCTYPE html>
               margin-bottom: 20px; font-size: 0.9rem; font-weight: 600; }}
   .summary-item {{ display: flex; align-items: center; gap: 4px; }}
   .summary-label {{ color: #64748b; font-weight: 400; font-size: 0.8rem; }}
-  .summary-divider {{ width: 1px; height: 16px; background: #334155; }}
+  .summary-divider {{ width: 1px; height: 16px; background: #475569; }}
   .section-title {{ font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
                     text-transform: uppercase; color: #64748b; margin: 20px 0 10px; }}
   .card {{ background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }}
@@ -304,7 +304,7 @@ html = f"""<!DOCTYPE html>
   .range-hint {{ font-size: 0.65rem; color: #475569; text-transform: none; letter-spacing: 0; margin-left: 4px; }}
   .range-pct {{ color: #94a3b8; }}
   .range-wrap {{ display: flex; align-items: center; gap: 8px; }}
-  .range-bar {{ flex: 1; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; }}
+  .range-bar {{ flex: 1; height: 6px; background: #475569; border-radius: 3px; overflow: hidden; }}
   .range-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 3px; }}
   .range-val {{ font-size: 0.68rem; color: #64748b; text-align: center; line-height: 1.3; }}
   .chart-section {{ margin-top: 12px; }}
@@ -313,7 +313,7 @@ html = f"""<!DOCTYPE html>
   .chart-btns {{ display: flex; gap: 4px; }}
   .cbtn {{ background: #0f1117; border: 1px solid #1e293b; color: #475569; font-size: 0.7rem;
             font-weight: 600; padding: 2px 7px; border-radius: 4px; cursor: pointer; }}
-  .cbtn.active {{ background: #1e293b; color: #94a3b8; border-color: #334155; }}
+  .cbtn.active {{ background: #1e293b; color: #94a3b8; border-color: #475569; }}
   .cbtn:hover {{ color: #cbd5e1; }}
   .news-list {{ list-style: none; }}
   .news-list li {{ padding: 10px 0; border-bottom: 1px solid #1e2330;
