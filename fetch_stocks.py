@@ -364,17 +364,14 @@ print(f"Reports saved: {md_path}, {html_path}")
 tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
-    lines = [f"📊 *Stock Summary — {today}*", f"▲ {up_count} up · ▼ {down_count} down · Best: {best['ticker']} {best['pct']:+.2f}% · Worst: {worst['ticker']} {worst['pct']:+.2f}%\n"]
+    lines = [f"📊 `Stock Summary — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
     for sector_name, sector_tickers in SECTORS.items():
-        lines.append(f"*{sector_name}*")
+        lines.append(f"`{sector_name}`")
         for t in sector_tickers:
             s = stock_map.get(t)
             if not s or s["price"] is None: continue
-            arrow = "🟢" if s["pct"] >= 0 else "🔴"
-            line = f"{arrow} *{s['ticker']}*: ${s['price']:.2f} ({s['pct']:+.2f}%)"
-            if s["week_pct"] is not None:
-                line += f" | 1W: {s['week_pct']:+.2f}%"
-            lines.append(line)
+            arrow = "▲" if s["pct"] >= 0 else "▼"
+            lines.append(f"`{s['ticker']:<5} ${s['price']:>8.2f}  {arrow}{s['pct']:+.2f}%`")
         lines.append("")
     lines.append(f"[Full report](https://allie0132.github.io/daily-stock-update/daily-reports/{today}.html)")
     msg = "\n".join(lines)
