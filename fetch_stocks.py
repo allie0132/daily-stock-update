@@ -111,6 +111,10 @@ def pct_span(val, label=""):
     arrow = "▲" if val >= 0 else "▼"
     return f'<span class="{cls}">{label}{arrow} {val:+.2f}%</span>'
 
+def metric(label, value_html, tooltip=""):
+    title = f'title="{tooltip}"' if tooltip else ""
+    return f'<div class="metric" {title}><span class="metric-label">{label}</span><span class="metric-value">{value_html}</span></div>'
+
 def card_html(s):
     if s["price"] is None:
         return f'<div class="card"><div class="card-header"><span class="ticker">{s["ticker"]}</span><span class="neutral">unavailable</span></div></div>'
@@ -120,40 +124,43 @@ def card_html(s):
     arrow = "▲" if up else "▼"
     vol_badge = '<span class="vol-badge">⚡ High Vol</span>' if s["high_volume"] else ""
 
+    # Metrics row
+    day_html = f'<span class="{change_cls} plain">{arrow} {s["pct"]:+.2f}%</span>'
+    week_html = pct_span(s["week_pct"]) if s["week_pct"] is not None else '<span class="neutral">—</span>'
+    target_html = f'<span class="up plain">${s["target"]:.2f} ({s["upside"]:+.1f}%)</span>' if s["target"] and s["upside"] >= 0 else (f'<span class="down plain">${s["target"]:.2f} ({s["upside"]:+.1f}%)</span>' if s["target"] else '<span class="neutral">—</span>')
+
+    metrics_html = f'''
+      <div class="metrics-grid">
+        {metric("Price (USD)", f'<span class="price-val">${s["price"]:.2f}</span>')}
+        {metric("Day Change", day_html, "Change vs previous close")}
+        {metric("1-Week Change", week_html, "Change over the past 5 trading days")}
+        {metric("Analyst Target", target_html, "Wall Street consensus mean price target")}
+      </div>'''
+
     range_html = ""
     if s["range_pct"] is not None:
         rp = min(max(s["range_pct"], 0), 100)
         range_html = f'''
       <div class="range-section">
         <div class="range-label-row">
-          <span class="range-label-text">52W Range</span>
-          <span class="range-pct">{rp:.0f}% of range</span>
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">{rp:.0f}%</span>
         </div>
         <div class="range-wrap">
-          <span class="range-val">${s["low52"]:.2f}</span>
+          <span class="range-val">Low<br>${s["low52"]:.2f}</span>
           <div class="range-bar"><div class="range-fill" style="width:{rp:.1f}%"></div></div>
-          <span class="range-val">${s["high52"]:.2f}</span>
+          <span class="range-val">High<br>${s["high52"]:.2f}</span>
         </div>
       </div>'''
-
-    target_html = ""
-    if s["target"]:
-        t_cls = "up" if s["upside"] >= 0 else "down"
-        target_html = f'<div class="target {t_cls}">🎯 Analyst target: <strong>${s["target"]:.2f}</strong> <span>({s["upside"]:+.2f}% upside)</span></div>'
 
     return f'''<div class="card">
       <div class="card-header">
         <span class="ticker">{s["ticker"]}</span>
-        <span class="price">${s["price"]:.2f}</span>
         <span class="change {change_cls}">{arrow} {s["pct"]:+.2f}%</span>
         {vol_badge}
       </div>
-      <div class="perf-row">
-        <div class="perf-item"><span class="perf-label">Day</span>{pct_span(s["pct"])}</div>
-        <div class="perf-item"><span class="perf-label">1 Week</span>{pct_span(s["week_pct"])}</div>
-      </div>
+      {metrics_html}
       {range_html}
-      {target_html}
     </div>'''
 
 # ── Market summary ───────────────────────────────────────────
@@ -214,32 +221,33 @@ html = f"""<!DOCTYPE html>
   .section-title {{ font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
                     text-transform: uppercase; color: #64748b; margin: 20px 0 10px; }}
   .card {{ background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }}
-  .card-header {{ display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }}
-  .ticker {{ font-size: 1.1rem; font-weight: 700; color: #f8fafc; min-width: 55px; }}
-  .price {{ font-size: 1.1rem; font-weight: 600; color: #cbd5e1; flex: 1; }}
-  .change {{ font-size: 0.95rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; }}
+  .card-header {{ display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }}
+  .ticker {{ font-size: 1.15rem; font-weight: 700; color: #f8fafc; flex: 1; }}
+  .change {{ font-size: 0.95rem; font-weight: 600; padding: 2px 10px; border-radius: 6px; }}
   .vol-badge {{ font-size: 0.7rem; font-weight: 600; background: #78350f44;
                 color: #fbbf24; padding: 2px 6px; border-radius: 4px; }}
-  .perf-row {{ display: flex; gap: 16px; margin-top: 10px; }}
-  .perf-item {{ display: flex; flex-direction: column; gap: 2px; }}
-  .perf-label {{ font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }}
+  .metrics-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }}
+  .metric {{ background: #0f1117; border-radius: 8px; padding: 8px 10px;
+             display: flex; flex-direction: column; gap: 3px; }}
+  .metric-label {{ font-size: 0.68rem; color: #64748b; text-transform: uppercase;
+                   letter-spacing: .06em; font-weight: 500; }}
+  .metric-value {{ font-size: 0.9rem; font-weight: 600; }}
+  .price-val {{ color: #f1f5f9; }}
   .up {{ color: #4ade80; background: #14532d33; }}
   .down {{ color: #f87171; background: #7f1d1d33; }}
-  .up.change, .down.change {{ padding: 2px 8px; border-radius: 6px; }}
-  .perf-item .up, .perf-item .down {{ background: none; padding: 0;
-                                       font-size: 0.85rem; font-weight: 600; }}
-  .neutral {{ color: #94a3b8; }}
-  .range-section {{ margin-top: 10px; }}
-  .range-label-row {{ display: flex; justify-content: space-between;
-                       font-size: 0.7rem; color: #64748b; margin-bottom: 4px; }}
-  .range-label-text {{ text-transform: uppercase; letter-spacing: .05em; }}
-  .range-wrap {{ display: flex; align-items: center; gap: 6px; }}
+  .up.plain, .down.plain {{ background: none; }}
+  .change.up, .change.down {{ padding: 2px 10px; border-radius: 6px; }}
+  .neutral {{ color: #64748b; }}
+  .range-section {{ margin-top: 4px; }}
+  .range-label-row {{ display: flex; justify-content: space-between; align-items: baseline;
+                       font-size: 0.7rem; color: #64748b; margin-bottom: 6px; }}
+  .range-label-text {{ text-transform: uppercase; letter-spacing: .05em; font-weight: 500; }}
+  .range-hint {{ font-size: 0.65rem; color: #475569; text-transform: none; letter-spacing: 0; margin-left: 4px; }}
+  .range-pct {{ color: #94a3b8; }}
+  .range-wrap {{ display: flex; align-items: center; gap: 8px; }}
   .range-bar {{ flex: 1; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; }}
   .range-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 3px; }}
-  .range-val {{ font-size: 0.72rem; color: #64748b; }}
-  .target {{ margin-top: 8px; font-size: 0.8rem; color: #94a3b8; }}
-  .target.up span {{ color: #4ade80; }}
-  .target.down span {{ color: #f87171; }}
+  .range-val {{ font-size: 0.68rem; color: #64748b; text-align: center; line-height: 1.3; }}
   .news-list {{ list-style: none; }}
   .news-list li {{ padding: 10px 0; border-bottom: 1px solid #1e2330;
                    font-size: 0.85rem; line-height: 1.5; }}
