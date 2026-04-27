@@ -69,16 +69,87 @@
 </head>
 <body>
   <h1>📊 Daily Stock Summary</h1>
-  <div class="date">Monday, Apr 27 2026 · 09:13 AM ET</div>
+  <div class="date">Monday, Apr 27 2026 · 09:15 AM ET</div>
   <div class="summary">
-  <div class="summary-item"><span class="up">▲ 5 Up</span></div>
-  <div class="summary-item"><span class="down">▼ 2 Down</span></div>
+  <div class="summary-item"><span class="up">▲ 6 Up</span></div>
+  <div class="summary-item"><span class="down">▼ 4 Down</span></div>
   <div class="summary-divider"></div>
   <div class="summary-item"><span class="summary-label">Best</span> <span class="up">MU +0.48%</span></div>
   <div class="summary-item"><span class="summary-label">Worst</span> <span class="down">AMD -0.27%</span></div>
 </div>
   <div class="section-title">💡 Semiconductors</div>
-<div class="card"><div class="card-header"><span class="ticker">NVDA</span><span class="neutral">unavailable</span></div></div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">NVDA</span>
+        <span class="change up">▲ +0.08%</span>
+        
+      </div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$208.27</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +0.08%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +3.27%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$268.61 (+29.0%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('NVDA','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('NVDA','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('NVDA','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_NVDA" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["NVDA"] = {"1mo": {"dates": ["Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [171.24, 167.52, 165.17, 174.4, 175.75, 177.39, 177.64, 178.1, 182.08, 183.91, 188.63, 189.31, 196.51, 198.87, 198.35, 201.68, 202.06, 199.88, 202.5, 199.64, 208.27]}, "3mo": {"dates": ["Jan 26", "Jan 27", "Jan 28", "Jan 29", "Jan 30", "Feb 02", "Feb 03", "Feb 04", "Feb 05", "Feb 06", "Feb 09", "Feb 10", "Feb 11", "Feb 12", "Feb 13", "Feb 17", "Feb 18", "Feb 19", "Feb 20", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Mar 02", "Mar 03", "Mar 04", "Mar 05", "Mar 06", "Mar 09", "Mar 10", "Mar 11", "Mar 12", "Mar 13", "Mar 16", "Mar 17", "Mar 18", "Mar 19", "Mar 20", "Mar 23", "Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [186.46, 188.51, 191.51, 192.5, 191.12, 185.6, 180.33, 174.18, 171.87, 185.4, 190.03, 188.53, 190.04, 186.93, 182.8, 184.96, 187.97, 187.89, 189.81, 191.54, 192.84, 195.55, 184.88, 177.18, 182.47, 180.04, 183.03, 183.33, 177.81, 182.64, 184.76, 186.03, 183.14, 180.25, 183.22, 181.93, 180.4, 178.56, 172.7, 175.64, 175.2, 178.68, 171.24, 167.52, 165.17, 174.4, 175.75, 177.39, 177.64, 178.1, 182.08, 183.91, 188.63, 189.31, 196.51, 198.87, 198.35, 201.68, 202.06, 199.88, 202.5, 199.64, 208.27]}, "6mo": {"dates": ["Oct 27", "Oct 28", "Oct 29", "Oct 30", "Oct 31", "Nov 03", "Nov 04", "Nov 05", "Nov 06", "Nov 07", "Nov 10", "Nov 11", "Nov 12", "Nov 13", "Nov 14", "Nov 17", "Nov 18", "Nov 19", "Nov 20", "Nov 21", "Nov 24", "Nov 25", "Nov 26", "Nov 28", "Dec 01", "Dec 02", "Dec 03", "Dec 04", "Dec 05", "Dec 08", "Dec 09", "Dec 10", "Dec 11", "Dec 12", "Dec 15", "Dec 16", "Dec 17", "Dec 18", "Dec 19", "Dec 22", "Dec 23", "Dec 24", "Dec 26", "Dec 29", "Dec 30", "Dec 31", "Jan 02", "Jan 05", "Jan 06", "Jan 07", "Jan 08", "Jan 09", "Jan 12", "Jan 13", "Jan 14", "Jan 15", "Jan 16", "Jan 20", "Jan 21", "Jan 22", "Jan 23", "Jan 26", "Jan 27", "Jan 28", "Jan 29", "Jan 30", "Feb 02", "Feb 03", "Feb 04", "Feb 05", "Feb 06", "Feb 09", "Feb 10", "Feb 11", "Feb 12", "Feb 13", "Feb 17", "Feb 18", "Feb 19", "Feb 20", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Mar 02", "Mar 03", "Mar 04", "Mar 05", "Mar 06", "Mar 09", "Mar 10", "Mar 11", "Mar 12", "Mar 13", "Mar 16", "Mar 17", "Mar 18", "Mar 19", "Mar 20", "Mar 23", "Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [191.47, 201.01, 207.02, 202.87, 202.47, 206.86, 198.67, 195.19, 188.06, 188.13, 199.03, 193.14, 193.78, 186.84, 190.15, 186.58, 181.34, 186.5, 180.62, 178.86, 182.53, 177.8, 180.24, 176.98, 179.9, 181.44, 179.57, 183.37, 182.4, 185.54, 184.96, 183.77, 180.92, 175.01, 176.28, 177.71, 170.93, 174.13, 180.98, 183.68, 189.2, 188.6, 190.52, 188.21, 187.53, 186.49, 188.84, 188.11, 187.23, 189.1, 185.03, 184.85, 184.93, 185.8, 183.13, 187.04, 186.22, 178.06, 183.31, 184.83, 187.66, 186.46, 188.51, 191.51, 192.5, 191.12, 185.6, 180.33, 174.18, 171.87, 185.4, 190.03, 188.53, 190.04, 186.93, 182.8, 184.96, 187.97, 187.89, 189.81, 191.54, 192.84, 195.55, 184.88, 177.18, 182.47, 180.04, 183.03, 183.33, 177.81, 182.64, 184.76, 186.03, 183.14, 180.25, 183.22, 181.93, 180.4, 178.56, 172.7, 175.64, 175.2, 178.68, 171.24, 167.52, 165.17, 174.4, 175.75, 177.39, 177.64, 178.1, 182.08, 183.91, 188.63, 189.31, 196.51, 198.87, 198.35, 201.68, 202.06, 199.88, 202.5, 199.64, 208.27]}};
+            var ctx = document.getElementById("chart_NVDA").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["NVDA"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"],
+                datasets: [{
+                  data: [171.24, 167.52, 165.17, 174.4, 175.75, 177.39, 177.64, 178.1, 182.08, 183.91, 188.63, 189.31, 196.51, 198.87, 198.35, 201.68, 202.06, 199.88, 202.5, 199.64, 208.27],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">96%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$104.08</span>
+          <div class="range-bar"><div class="range-fill" style="width:96.4%"></div></div>
+          <span class="range-val">High<br>$212.19</span>
+        </div>
+      </div>
+    </div>
 <div class="card">
       <div class="card-header">
         <span class="ticker">MU</span>
@@ -151,7 +222,78 @@
         </div>
       </div>
     </div>
-<div class="card"><div class="card-header"><span class="ticker">INTC</span><span class="neutral">unavailable</span></div></div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">INTC</span>
+        <span class="change down">▼ -0.22%</span>
+        <span class="vol-badge">⚡ High Vol</span>
+      </div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$82.54</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="down plain">▼ -0.22%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +20.50%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="down plain">$74.15 (-10.2%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('INTC','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('INTC','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('INTC','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_INTC" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["INTC"] = {"1mo": {"dates": ["Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [44.1, 43.13, 41.19, 44.13, 48.03, 50.38, 50.78, 52.91, 58.95, 61.72, 62.38, 65.18, 63.81, 64.94, 68.5, 68.5, 65.7, 66.26, 65.27, 66.78, 82.54]}, "3mo": {"dates": ["Jan 26", "Jan 27", "Jan 28", "Jan 29", "Jan 30", "Feb 02", "Feb 03", "Feb 04", "Feb 05", "Feb 06", "Feb 09", "Feb 10", "Feb 11", "Feb 12", "Feb 13", "Feb 17", "Feb 18", "Feb 19", "Feb 20", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Mar 02", "Mar 03", "Mar 04", "Mar 05", "Mar 06", "Mar 09", "Mar 10", "Mar 11", "Mar 12", "Mar 13", "Mar 16", "Mar 17", "Mar 18", "Mar 19", "Mar 20", "Mar 23", "Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [42.49, 43.93, 48.78, 48.66, 46.47, 48.81, 49.25, 48.6, 48.24, 50.59, 50.24, 47.13, 48.29, 46.48, 46.79, 46.18, 45.46, 44.62, 44.11, 43.63, 46.12, 46.88, 45.46, 45.61, 45.5, 43.1, 45.58, 45.95, 43.42, 45.58, 46.78, 47.98, 45.25, 45.77, 45.76, 44.06, 45.03, 46.18, 43.87, 44.01, 44.06, 47.18, 44.1, 43.13, 41.19, 44.13, 48.03, 50.38, 50.78, 52.91, 58.95, 61.72, 62.38, 65.18, 63.81, 64.94, 68.5, 68.5, 65.7, 66.26, 65.27, 66.78, 82.54]}, "6mo": {"dates": ["Oct 27", "Oct 28", "Oct 29", "Oct 30", "Oct 31", "Nov 03", "Nov 04", "Nov 05", "Nov 06", "Nov 07", "Nov 10", "Nov 11", "Nov 12", "Nov 13", "Nov 14", "Nov 17", "Nov 18", "Nov 19", "Nov 20", "Nov 21", "Nov 24", "Nov 25", "Nov 26", "Nov 28", "Dec 01", "Dec 02", "Dec 03", "Dec 04", "Dec 05", "Dec 08", "Dec 09", "Dec 10", "Dec 11", "Dec 12", "Dec 15", "Dec 16", "Dec 17", "Dec 18", "Dec 19", "Dec 22", "Dec 23", "Dec 24", "Dec 26", "Dec 29", "Dec 30", "Dec 31", "Jan 02", "Jan 05", "Jan 06", "Jan 07", "Jan 08", "Jan 09", "Jan 12", "Jan 13", "Jan 14", "Jan 15", "Jan 16", "Jan 20", "Jan 21", "Jan 22", "Jan 23", "Jan 26", "Jan 27", "Jan 28", "Jan 29", "Jan 30", "Feb 02", "Feb 03", "Feb 04", "Feb 05", "Feb 06", "Feb 09", "Feb 10", "Feb 11", "Feb 12", "Feb 13", "Feb 17", "Feb 18", "Feb 19", "Feb 20", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Mar 02", "Mar 03", "Mar 04", "Mar 05", "Mar 06", "Mar 09", "Mar 10", "Mar 11", "Mar 12", "Mar 13", "Mar 16", "Mar 17", "Mar 18", "Mar 19", "Mar 20", "Mar 23", "Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [39.54, 41.53, 41.34, 40.16, 39.99, 39.5, 37.03, 38.38, 37.24, 38.13, 38.45, 37.88, 37.89, 35.91, 35.52, 34.71, 34.33, 35.11, 33.62, 34.5, 35.79, 35.83, 36.81, 40.56, 40.01, 43.47, 43.76, 40.5, 41.41, 40.3, 40.5, 40.78, 39.51, 37.81, 37.51, 37.31, 36.05, 36.28, 36.82, 36.37, 36.35, 36.16, 36.2, 36.68, 37.3, 36.9, 39.38, 39.37, 40.04, 42.63, 41.11, 45.55, 44.06, 47.29, 48.72, 48.32, 46.96, 48.56, 54.25, 54.32, 45.07, 42.49, 43.93, 48.78, 48.66, 46.47, 48.81, 49.25, 48.6, 48.24, 50.59, 50.24, 47.13, 48.29, 46.48, 46.79, 46.18, 45.46, 44.62, 44.11, 43.63, 46.12, 46.88, 45.46, 45.61, 45.5, 43.1, 45.58, 45.95, 43.42, 45.58, 46.78, 47.98, 45.25, 45.77, 45.76, 44.06, 45.03, 46.18, 43.87, 44.01, 44.06, 47.18, 44.1, 43.13, 41.19, 44.13, 48.03, 50.38, 50.78, 52.91, 58.95, 61.72, 62.38, 65.18, 63.81, 64.94, 68.5, 68.5, 65.7, 66.26, 65.27, 66.78, 82.54]}};
+            var ctx = document.getElementById("chart_INTC").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["INTC"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"],
+                datasets: [{
+                  data: [44.1, 43.13, 41.19, 44.13, 48.03, 50.38, 50.78, 52.91, 58.95, 61.72, 62.38, 65.18, 63.81, 64.94, 68.5, 68.5, 65.7, 66.26, 65.27, 66.78, 82.54],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">96%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$18.97</span>
+          <div class="range-bar"><div class="range-fill" style="width:96.0%"></div></div>
+          <span class="range-val">High<br>$85.22</span>
+        </div>
+      </div>
+    </div>
 <div class="card">
       <div class="card-header">
         <span class="ticker">AMD</span>
@@ -513,7 +655,78 @@
         </div>
       </div>
     </div>
-<div class="card"><div class="card-header"><span class="ticker">META</span><span class="neutral">unavailable</span></div></div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">META</span>
+        <span class="change down">▼ -0.02%</span>
+        
+      </div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$675.03</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="down plain">▼ -0.02%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="down">▼ -1.96%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$855.11 (+26.7%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('META','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('META','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('META','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_META" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["META"] = {"1mo": {"dates": ["Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [547.54, 525.72, 536.38, 572.13, 579.23, 574.46, 573.02, 575.05, 612.42, 628.39, 629.86, 634.53, 662.49, 671.58, 676.87, 688.55, 670.91, 668.84, 674.72, 659.15, 675.03]}, "3mo": {"dates": ["Jan 26", "Jan 27", "Jan 28", "Jan 29", "Jan 30", "Feb 02", "Feb 03", "Feb 04", "Feb 05", "Feb 06", "Feb 09", "Feb 10", "Feb 11", "Feb 12", "Feb 13", "Feb 17", "Feb 18", "Feb 19", "Feb 20", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Mar 02", "Mar 03", "Mar 04", "Mar 05", "Mar 06", "Mar 09", "Mar 10", "Mar 11", "Mar 12", "Mar 13", "Mar 16", "Mar 17", "Mar 18", "Mar 19", "Mar 20", "Mar 23", "Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [671.78, 672.39, 668.16, 737.68, 715.89, 705.81, 691.11, 668.42, 669.64, 660.89, 676.64, 670.15, 668.12, 649.25, 639.22, 638.74, 642.67, 644.23, 655.1, 636.7, 638.75, 653.13, 656.45, 647.63, 653.0, 654.52, 667.16, 660.0, 644.31, 646.84, 653.51, 654.3, 637.63, 613.18, 627.45, 622.66, 615.68, 606.7, 593.66, 604.06, 592.92, 594.89, 547.54, 525.72, 536.38, 572.13, 579.23, 574.46, 573.02, 575.05, 612.42, 628.39, 629.86, 634.53, 662.49, 671.58, 676.87, 688.55, 670.91, 668.84, 674.72, 659.15, 675.03]}, "6mo": {"dates": ["Oct 27", "Oct 28", "Oct 29", "Oct 30", "Oct 31", "Nov 03", "Nov 04", "Nov 05", "Nov 06", "Nov 07", "Nov 10", "Nov 11", "Nov 12", "Nov 13", "Nov 14", "Nov 17", "Nov 18", "Nov 19", "Nov 20", "Nov 21", "Nov 24", "Nov 25", "Nov 26", "Nov 28", "Dec 01", "Dec 02", "Dec 03", "Dec 04", "Dec 05", "Dec 08", "Dec 09", "Dec 10", "Dec 11", "Dec 12", "Dec 15", "Dec 16", "Dec 17", "Dec 18", "Dec 19", "Dec 22", "Dec 23", "Dec 24", "Dec 26", "Dec 29", "Dec 30", "Dec 31", "Jan 02", "Jan 05", "Jan 06", "Jan 07", "Jan 08", "Jan 09", "Jan 12", "Jan 13", "Jan 14", "Jan 15", "Jan 16", "Jan 20", "Jan 21", "Jan 22", "Jan 23", "Jan 26", "Jan 27", "Jan 28", "Jan 29", "Jan 30", "Feb 02", "Feb 03", "Feb 04", "Feb 05", "Feb 06", "Feb 09", "Feb 10", "Feb 11", "Feb 12", "Feb 13", "Feb 17", "Feb 18", "Feb 19", "Feb 20", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Mar 02", "Mar 03", "Mar 04", "Mar 05", "Mar 06", "Mar 09", "Mar 10", "Mar 11", "Mar 12", "Mar 13", "Mar 16", "Mar 17", "Mar 18", "Mar 19", "Mar 20", "Mar 23", "Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"], "prices": [749.57, 750.19, 750.41, 665.36, 647.27, 636.65, 626.27, 634.89, 617.91, 620.67, 630.71, 626.03, 607.99, 608.87, 608.44, 601.0, 596.69, 589.33, 588.17, 593.26, 612.03, 635.16, 632.55, 646.87, 639.8, 646.02, 638.53, 660.43, 672.3, 665.69, 655.86, 649.04, 651.62, 643.15, 646.96, 656.59, 648.94, 663.88, 658.21, 660.93, 664.37, 666.98, 662.72, 658.13, 665.38, 659.53, 649.85, 658.23, 660.05, 648.14, 645.51, 652.5, 641.42, 630.55, 614.99, 620.27, 619.72, 603.6, 612.44, 647.08, 658.2, 671.78, 672.39, 668.16, 737.68, 715.89, 705.81, 691.11, 668.42, 669.64, 660.89, 676.64, 670.15, 668.12, 649.25, 639.22, 638.74, 642.67, 644.23, 655.1, 636.7, 638.75, 653.13, 656.45, 647.63, 653.0, 654.52, 667.16, 660.0, 644.31, 646.84, 653.51, 654.3, 637.63, 613.18, 627.45, 622.66, 615.68, 606.7, 593.66, 604.06, 592.92, 594.89, 547.54, 525.72, 536.38, 572.13, 579.23, 574.46, 573.02, 575.05, 612.42, 628.39, 629.86, 634.53, 662.49, 671.58, 676.87, 688.55, 670.91, 668.84, 674.72, 659.15, 675.03]}};
+            var ctx = document.getElementById("chart_META").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["META"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24"],
+                datasets: [{
+                  data: [547.54, 525.72, 536.38, 572.13, 579.23, 574.46, 573.02, 575.05, 612.42, 628.39, 629.86, 634.53, 662.49, 671.58, 676.87, 688.55, 670.91, 668.84, 674.72, 659.15, 675.03],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">56%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$520.26</span>
+          <div class="range-bar"><div class="range-fill" style="width:56.1%"></div></div>
+          <span class="range-val">High<br>$796.25</span>
+        </div>
+      </div>
+    </div>
 <div class="card">
       <div class="card-header">
         <span class="ticker">TSLA</span>
@@ -588,7 +801,7 @@
     </div>
 
   <div class="section-title">📰 Top Headlines</div>
-  <ul class="news-list"><li><span class="news-ticker">[AAPL]</span> <a href="https://finance.yahoo.com/news/stocks-strong-april-gains-come-with-1-potential-downside-122514320.html" target="_blank">Stocks' strong April gains come with 1 potential downside</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[AAPL]</span> <a href="https://finance.yahoo.com/video/401-k-outdated-charles-payne-110000127.html" target="_blank">Is the 401(k) outdated? Charles Payne weighs in</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://finance.yahoo.com/sectors/technology/live/tech-stocks-today-nvidia-magnificent-seven-113535737.html" target="_blank">Tech stocks today: Qualcomm stock soars, Nvidia tops $5 trillion again, with Big Tech Q1 updates on deck</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://finance.yahoo.com/video/why-strategist-bullish-zoom-100000012.html" target="_blank">Why this strategist is bullish on Zoom</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[GOOGL]</span> <a href="https://finance.yahoo.com/markets/live/earnings-live-updates-dominos-stock-falls-as-busy-magnificent-7-earnings-week-begins-111414777.html" target="_blank">Earnings live updates:  Domino's stock falls as busy 'Magnificent 7' earnings week begins</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[AMZN]</span> <a href="https://finance.yahoo.com/sectors/technology/articles/amazon-meta-team-scale-ai-131116451.html" target="_blank">Amazon and Meta team up to scale AI infrastructure</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[TSLA]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/tesla-tsla-move-toward-physical-130606579.html" target="_blank">Tesla’s (TSLA) Move Toward Physical AI Leadership</a><span class="publisher"> — Insider Monkey</span></li><li><span class="news-ticker">[MU]</span> <a href="https://finance.yahoo.com/sectors/technology/articles/week-ai-chips-weride-advances-113801632.html" target="_blank">This Week In AI Chips - WeRide Advances Multi-Chip Integration With Major Partnerships</a><span class="publisher"> — Simply Wall St.</span></li><li><span class="news-ticker">[MU]</span> <a href="https://www.fool.com/investing/2026/04/26/the-ai-chip-rally-pushed-smh-higher-what-investors/" target="_blank">The AI Chip Rally Pushed SMH Higher. What Investors Should Know Before Buying.</a><span class="publisher"> — Motley Fool</span></li><li><span class="news-ticker">[AMD]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/amd-gets-boost-analysts-see-130841015.html" target="_blank">AMD gets a boost as analysts see bigger CPU opportunity</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[AMD]</span> <a href="https://247wallst.com/investing/2026/04/27/here-are-mondays-top-wall-street-analyst-research-calls-adobe-advanced-micro-devices-crowdsrike-doordash-fortinet-ge-vernova-snap-stubhub-and-more/" target="_blank">Here Are Monday’s Top Wall Street Analyst Research Calls: Adobe, Advanced Micro Devices, CrowdStrike, DoorDash, Fortinet, GE Vernova, Snap, StubHub, and More</a><span class="publisher"> — 24/7 Wall St.</span></li></ul>
+  <ul class="news-list"><li><span class="news-ticker">[AAPL]</span> <a href="https://finance.yahoo.com/news/stocks-strong-april-gains-come-with-1-potential-downside-122514320.html" target="_blank">Stocks' strong April gains come with 1 potential downside</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[AAPL]</span> <a href="https://finance.yahoo.com/video/401-k-outdated-charles-payne-110000127.html" target="_blank">Is the 401(k) outdated? Charles Payne weighs in</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://finance.yahoo.com/sectors/technology/live/tech-stocks-today-nvidia-magnificent-seven-113535737.html" target="_blank">Tech stocks today: Qualcomm stock soars, Nvidia tops $5 trillion again, with Big Tech Q1 updates on deck</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://finance.yahoo.com/video/why-strategist-bullish-zoom-100000012.html" target="_blank">Why this strategist is bullish on Zoom</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[GOOGL]</span> <a href="https://finance.yahoo.com/markets/live/earnings-live-updates-dominos-stock-falls-as-busy-magnificent-7-earnings-week-begins-111414777.html" target="_blank">Earnings live updates:  Domino's stock falls as busy 'Magnificent 7' earnings week begins</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[AMZN]</span> <a href="https://finance.yahoo.com/sectors/technology/articles/amazon-meta-team-scale-ai-131116451.html" target="_blank">Amazon and Meta team up to scale AI infrastructure</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[NVDA]</span> <a href="https://finance.yahoo.com/news/mag-7-earnings-bonanza-and-powells-home-stretch-what-to-watch-this-week-113016596.html" target="_blank">Mag 7 earnings bonanza and Powell's home stretch: What to watch this week</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[TSLA]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/tesla-tsla-move-toward-physical-130606579.html" target="_blank">Tesla’s (TSLA) Move Toward Physical AI Leadership</a><span class="publisher"> — Insider Monkey</span></li><li><span class="news-ticker">[MU]</span> <a href="https://finance.yahoo.com/sectors/technology/articles/week-ai-chips-weride-advances-113801632.html" target="_blank">This Week In AI Chips - WeRide Advances Multi-Chip Integration With Major Partnerships</a><span class="publisher"> — Simply Wall St.</span></li><li><span class="news-ticker">[MU]</span> <a href="https://www.fool.com/investing/2026/04/26/the-ai-chip-rally-pushed-smh-higher-what-investors/" target="_blank">The AI Chip Rally Pushed SMH Higher. What Investors Should Know Before Buying.</a><span class="publisher"> — Motley Fool</span></li><li><span class="news-ticker">[INTC]</span> <a href="https://finance.yahoo.com/markets/article/a-return-to-optimism-wall-street-strategists-are-bullish-on-the-ai-trade-143000172.html" target="_blank">'A return to optimism': Wall Street strategists are bullish on the AI trade</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[INTC]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/amd-gets-boost-analysts-see-130841015.html" target="_blank">AMD gets a boost as analysts see bigger CPU opportunity</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[AMD]</span> <a href="https://247wallst.com/investing/2026/04/27/here-are-mondays-top-wall-street-analyst-research-calls-adobe-advanced-micro-devices-crowdsrike-doordash-fortinet-ge-vernova-snap-stubhub-and-more/" target="_blank">Here Are Monday’s Top Wall Street Analyst Research Calls: Adobe, Advanced Micro Devices, CrowdStrike, DoorDash, Fortinet, GE Vernova, Snap, StubHub, and More</a><span class="publisher"> — 24/7 Wall St.</span></li></ul>
   <p class="disclaimer">⚠️ Analyst targets are Wall Street consensus estimates via Yahoo Finance. Not investment advice.</p>
   <script>
     function setPeriod(tid, period, btn) {
