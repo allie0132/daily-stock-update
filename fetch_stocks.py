@@ -162,7 +162,7 @@ def card_html(s):
     chart_html = ""
     if s["chart_prices"]:
         ticker_id = s["ticker"].replace(".", "_")
-        color = "#e2e8f0"
+        color = "#64748b"
         chart_html = f'''
       <div class="chart-section">
         <div class="chart-label">1-Month Price History</div>
