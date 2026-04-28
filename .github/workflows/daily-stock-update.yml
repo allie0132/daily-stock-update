@@ -2,8 +2,9 @@ name: Daily Stock Update
 
 on:
   schedule:
-    - cron: '0 12 * * 1-5'  # 8am ET (EDT), weekdays
-  workflow_dispatch:          # allow manual runs
+    - cron: '30 13 * * 1-5'   # Market open  9:30am ET
+    - cron: '5 20 * * 1-5'    # Market close 4:05pm ET
+  workflow_dispatch:
 
 jobs:
   update:
@@ -26,6 +27,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPORT_TYPE: ${{ (github.event.schedule == '5 20 * * 1-5') && 'close' || 'open' }}
         run: python fetch_stocks.py
 
       - name: Commit and push report
@@ -33,5 +35,5 @@ jobs:
           git config user.email "88954557+allie0132@users.noreply.github.com"
           git config user.name "allie0132"
           git add daily-reports/ index.html
-          git diff --staged --quiet || git commit -m "report: daily stock update $(date +%Y-%m-%d)"
+          git diff --staged --quiet || git commit -m "report: stock update $(date +%Y-%m-%d-%H%M)"
           git push

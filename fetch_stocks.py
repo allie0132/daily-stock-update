@@ -12,6 +12,9 @@ tickers = config["tickers"]
 today = date.today().isoformat()
 now_et = datetime.now(ZoneInfo("America/New_York"))
 date_str = now_et.strftime("%A, %b %d %Y · %I:%M %p ET")
+
+report_type = os.environ.get("REPORT_TYPE", "open")
+report_label = "🔔 Market Open" if report_type == "open" else "🔔 Market Close"
 report_dir = "daily-reports"
 os.makedirs(report_dir, exist_ok=True)
 
@@ -328,7 +331,7 @@ html = f"""<!DOCTYPE html>
 </style>
 </head>
 <body>
-  <h1>📊 Daily Stock Summary</h1>
+  <h1>📊 {report_label}</h1>
   <div class="date">{date_str}</div>
   {summary_html}
   {sector_html}
@@ -364,7 +367,7 @@ print(f"Reports saved: {md_path}, {html_path}")
 tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
-    lines = [f"📊 `Stock Summary — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
+    lines = [f"📊 `{report_label} — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
     for sector_name, sector_tickers in SECTORS.items():
         lines.append(f"`{sector_name}`")
         for t in sector_tickers:
