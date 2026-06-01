@@ -3,5 +3,12 @@
   "sectors": {
     "💡 Semiconductors": ["NVDA", "MU", "INTC", "AMD"],
     "🌐 Big Tech": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA"]
-  }
+  },
+  "universe": [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "AVGO", "LLY", "JPM",
+    "V", "UNH", "XOM", "JNJ", "WMT", "MA", "PG", "HD", "CVX", "MRK",
+    "ABBV", "COST", "PEP", "KO", "BAC", "ADBE", "CRM", "TMO", "ACN", "NFLX",
+    "MCD", "CSCO", "ABT", "NKE", "TXN", "QCOM", "AMD", "MU", "INTC", "PYPL",
+    "UBER", "SNAP", "SPOT", "DIS", "BA", "GS", "MS", "AMD", "ARM", "PLTR"
+  ]
 }

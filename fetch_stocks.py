@@ -10,6 +10,7 @@ with open("config.json") as f:
 
 SECTORS = config["sectors"]
 tickers = list(dict.fromkeys(t for ts in SECTORS.values() for t in ts))
+universe = list(dict.fromkeys(config.get("universe", [])))
 today = date.today().isoformat()
 now_et = datetime.now(ZoneInfo("America/New_York"))
 date_str = now_et.strftime("%A, %b %d %Y · %I:%M %p ET")
@@ -94,6 +95,35 @@ for ticker in tickers:
             "today_vol": None, "trade_amount": None,
             "chart_data": {"1mo": {"dates": [], "prices": []}, "3mo": {"dates": [], "prices": []}, "6mo": {"dates": [], "prices": []}},
         })
+
+# ── Universe bulk fetch (for ranked lists) ───────────────────
+extra_tickers = [t for t in universe if t not in set(tickers)]
+universe_stocks = []
+if extra_tickers:
+    try:
+        bulk = yf.download(extra_tickers, period="2d", auto_adjust=True,
+                           progress=False, threads=True)
+        close = bulk["Close"] if len(extra_tickers) > 1 else bulk["Close"].to_frame(extra_tickers[0])
+        volume = bulk["Volume"] if len(extra_tickers) > 1 else bulk["Volume"].to_frame(extra_tickers[0])
+        for t in extra_tickers:
+            try:
+                prices = close[t].dropna()
+                vols = volume[t].dropna()
+                if len(prices) < 2:
+                    continue
+                price = float(prices.iloc[-1])
+                prev  = float(prices.iloc[-2])
+                pct   = (price - prev) / prev * 100
+                vol   = int(vols.iloc[-1]) if len(vols) else 0
+                universe_stocks.append({
+                    "ticker": t, "price": price, "pct": pct,
+                    "trade_amount": price * vol if vol else None,
+                    "upside": None, "target": None,
+                })
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"Warning: universe bulk fetch failed: {e}")
 
 # Markdown
 md_lines = [f"# Stock Report — {today}\n"]
@@ -246,9 +276,10 @@ def fmt_amount(v):
 
 N = 5
 
-top_trade    = sorted([s for s in valid if s["trade_amount"]], key=lambda s: s["trade_amount"], reverse=True)[:N]
-top_gaining  = sorted(valid, key=lambda s: s["pct"], reverse=True)[:N]
-top_losing   = sorted(valid, key=lambda s: s["pct"])[:N]
+all_rankable = valid + universe_stocks
+top_trade    = sorted([s for s in all_rankable if s["trade_amount"]], key=lambda s: s["trade_amount"], reverse=True)[:N]
+top_gaining  = sorted(all_rankable, key=lambda s: s["pct"], reverse=True)[:N]
+top_losing   = sorted(all_rankable, key=lambda s: s["pct"])[:N]
 top_upside   = sorted([s for s in valid if s["upside"] is not None], key=lambda s: s["upside"], reverse=True)[:N]
 
 def ranked_rows(items, cols_fn):
