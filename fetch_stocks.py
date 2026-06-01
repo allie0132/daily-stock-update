@@ -273,37 +273,82 @@ def card_html(s):
 def compute_signal(s):
     score = 0
     reasons = []
-    if s.get("upside") is not None:
-        if s["upside"] > 30:   score += 3; reasons.append(f"analyst upside {s['upside']:+.0f}%")
-        elif s["upside"] > 15: score += 2; reasons.append(f"analyst upside {s['upside']:+.0f}%")
-        elif s["upside"] > 5:  score += 1; reasons.append(f"analyst upside {s['upside']:+.0f}%")
-        elif s["upside"] < -10: score -= 2; reasons.append(f"above target {s['upside']:+.0f}%")
-        elif s["upside"] < 0:   score -= 1; reasons.append(f"above target {s['upside']:+.0f}%")
-    if s.get("range_pct") is not None:
-        if s["range_pct"] < 20:   score += 2; reasons.append("near 52W low")
-        elif s["range_pct"] < 35: score += 1; reasons.append("low in 52W range")
-        elif s["range_pct"] > 85: score -= 2; reasons.append("near 52W high")
-        elif s["range_pct"] > 70: score -= 1; reasons.append("high in 52W range")
-    if s.get("rsi") is not None:
-        if s["rsi"] < 30:   score += 2; reasons.append(f"RSI oversold {s['rsi']:.0f}")
-        elif s["rsi"] < 40: score += 1; reasons.append(f"RSI low {s['rsi']:.0f}")
-        elif s["rsi"] > 70: score -= 2; reasons.append(f"RSI overbought {s['rsi']:.0f}")
-        elif s["rsi"] > 60: score -= 1; reasons.append(f"RSI high {s['rsi']:.0f}")
-    if s.get("ma50") and s.get("price"):
-        if s["price"] > s["ma50"] * 1.05:  score -= 1; reasons.append("far above MA50")
-        elif s["price"] > s["ma50"]:        score += 0.5
-        elif s["price"] < s["ma50"] * 0.95: score += 1; reasons.append("below MA50")
-        else:                               score -= 0.5
-    if s.get("week_pct") is not None:
-        if s["week_pct"] > 5:    score -= 1; reasons.append(f"up {s['week_pct']:+.1f}% this week")
-        elif s["week_pct"] < -5: score += 1; reasons.append(f"down {s['week_pct']:+.1f}% this week")
+    explanation_parts = []
 
-    if score >= 4:   label, tag = "Strong Buy",  "strong-buy"
-    elif score >= 2: label, tag = "Buy",          "buy"
-    elif score >= -1: label, tag = "Hold",        "hold"
-    elif score >= -3: label, tag = "Sell",        "sell"
-    else:             label, tag = "Strong Sell", "strong-sell"
-    return {"score": score, "label": label, "tag": tag, "reasons": reasons[:3]}
+    if s.get("upside") is not None and s.get("target"):
+        if s["upside"] > 30:
+            score += 3; reasons.append(f"analyst upside {s['upside']:+.0f}%")
+            explanation_parts.append(f"Analyst consensus target ${s['target']:.2f} implies {s['upside']:+.0f}% upside — strong undervaluation signal.")
+        elif s["upside"] > 15:
+            score += 2; reasons.append(f"analyst upside {s['upside']:+.0f}%")
+            explanation_parts.append(f"Analyst target ${s['target']:.2f} implies {s['upside']:+.0f}% upside.")
+        elif s["upside"] > 5:
+            score += 1; reasons.append(f"analyst upside {s['upside']:+.0f}%")
+            explanation_parts.append(f"Analyst target ${s['target']:.2f} implies modest {s['upside']:+.0f}% upside.")
+        elif s["upside"] < -10:
+            score -= 2; reasons.append(f"above target {s['upside']:+.0f}%")
+            explanation_parts.append(f"Stock is trading {abs(s['upside']):.0f}% above analyst target of ${s['target']:.2f} — overvalued by consensus.")
+        elif s["upside"] < 0:
+            score -= 1; reasons.append(f"above target {s['upside']:+.0f}%")
+            explanation_parts.append(f"Stock has exceeded analyst target of ${s['target']:.2f} by {abs(s['upside']):.0f}%.")
+
+    if s.get("range_pct") is not None:
+        if s["range_pct"] < 20:
+            score += 2; reasons.append("near 52W low")
+            explanation_parts.append(f"Trading near its 52-week low ({s['range_pct']:.0f}% of range) — historically cheap entry point.")
+        elif s["range_pct"] < 35:
+            score += 1; reasons.append("low in 52W range")
+            explanation_parts.append(f"In the lower portion of its 52-week range ({s['range_pct']:.0f}%) — reasonable valuation vs recent history.")
+        elif s["range_pct"] > 85:
+            score -= 2; reasons.append("near 52W high")
+            explanation_parts.append(f"Trading near its 52-week high ({s['range_pct']:.0f}% of range) — limited upside from current levels.")
+        elif s["range_pct"] > 70:
+            score -= 1; reasons.append("high in 52W range")
+            explanation_parts.append(f"In the upper portion of its 52-week range ({s['range_pct']:.0f}%) — elevated vs recent history.")
+
+    if s.get("rsi") is not None:
+        if s["rsi"] < 30:
+            score += 2; reasons.append(f"RSI oversold {s['rsi']:.0f}")
+            explanation_parts.append(f"RSI at {s['rsi']:.0f} — heavily oversold, market may have overreacted, bounce likely.")
+        elif s["rsi"] < 40:
+            score += 1; reasons.append(f"RSI low {s['rsi']:.0f}")
+            explanation_parts.append(f"RSI at {s['rsi']:.0f} — approaching oversold territory, potential reversal ahead.")
+        elif s["rsi"] > 70:
+            score -= 2; reasons.append(f"RSI overbought {s['rsi']:.0f}")
+            explanation_parts.append(f"RSI at {s['rsi']:.0f} — overbought, high risk of near-term pullback.")
+        elif s["rsi"] > 60:
+            score -= 1; reasons.append(f"RSI high {s['rsi']:.0f}")
+            explanation_parts.append(f"RSI at {s['rsi']:.0f} — elevated momentum, may be getting stretched.")
+
+    if s.get("ma50") and s.get("price"):
+        gap = (s["price"] - s["ma50"]) / s["ma50"] * 100
+        if gap > 5:
+            score -= 1; reasons.append("far above MA50")
+            explanation_parts.append(f"Price is {gap:.0f}% above its 50-day moving average — extended, mean reversion risk.")
+        elif gap > 0:
+            score += 0.5
+        elif gap < -5:
+            score += 1; reasons.append("below MA50")
+            explanation_parts.append(f"Price is {abs(gap):.0f}% below its 50-day moving average — potential recovery play.")
+        else:
+            score -= 0.5
+
+    if s.get("week_pct") is not None:
+        if s["week_pct"] > 5:
+            score -= 1; reasons.append(f"up {s['week_pct']:+.1f}% this week")
+            explanation_parts.append(f"Up {s['week_pct']:+.1f}% this week — short-term momentum may be overdone.")
+        elif s["week_pct"] < -5:
+            score += 1; reasons.append(f"down {s['week_pct']:+.1f}% this week")
+            explanation_parts.append(f"Down {s['week_pct']:+.1f}% this week — recent weakness may be a buying opportunity.")
+
+    if score >= 4:    label, tag = "Strong Buy",  "strong-buy"
+    elif score >= 2:  label, tag = "Buy",          "buy"
+    elif score >= -1: label, tag = "Hold",         "hold"
+    elif score >= -3: label, tag = "Sell",         "sell"
+    else:             label, tag = "Strong Sell",  "strong-sell"
+
+    return {"score": score, "label": label, "tag": tag,
+            "reasons": reasons[:3], "explanation": " ".join(explanation_parts)}
 
 for s in stocks:
     if s["price"] is not None:
@@ -332,17 +377,16 @@ for s in valid:
     lbl = s["signal"]["label"]
     sig_groups.setdefault(lbl, []).append(s)
 
-signals_html = '<div class="section-title">🔎 Buy / Sell Signals</div><div class="card">'
+signals_html = '<div class="section-title">🔎 Buy / Sell Signals</div>'
 for lbl in ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]:
     items = sig_groups.get(lbl, [])
     if not items: continue
     tag = items[0]["signal"]["tag"]
-    signals_html += f'<div style="margin-bottom:10px"><span class="sig sig-{tag}">{lbl}</span><div class="signals-grid" style="margin-top:6px">'
+    signals_html += f'<div class="card" style="margin-bottom:10px"><div style="margin-bottom:10px"><span class="sig sig-{tag}">{lbl}</span></div>'
     for s in sorted(items, key=lambda x: x["signal"]["score"], reverse=True):
-        reasons = " · ".join(s["signal"]["reasons"]) if s["signal"]["reasons"] else "—"
-        signals_html += f'<div class="sig-card"><div class="sig-card-ticker">{s["ticker"]}</div><div class="sig-card-reason">{reasons}</div></div>'
-    signals_html += '</div></div>'
-signals_html += '</div>'
+        explanation = s["signal"].get("explanation") or "No analysis available."
+        signals_html += f'<div class="sig-card" style="margin-bottom:8px"><div class="sig-card-ticker">{s["ticker"]}</div><div class="sig-card-reason">{explanation}</div></div>'
+    signals_html += '</div>'
 
 # ── Dynamic ranked lists ─────────────────────────────────────
 def fmt_amount(v):
@@ -552,25 +596,6 @@ if tg_token and tg_chat_id:
         tickers_str = "  ".join(s["ticker"] for s in items_sig)
         lines.append(f"`{sig_icons[lbl]} {lbl:<12} {tickers_str}`")
     lines.append("")
-    for label, items, row_fn in [
-        ("💰 Top Trade Amount", top_trade,   lambda s: f"{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
-        ("📈 Top Increasing",   top_gaining,  lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
-        ("📉 Top Decreasing",   top_losing,   lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  {'▼' if s['pct']<0 else '▲'}{s['pct']:+.2f}%"),
-        ("🎯 Top Analyst Upside", top_upside, lambda s: f"{s['ticker']:<5} → ${s['target']:.2f} ({s['upside']:+.1f}%)"),
-    ]:
-        if not items: continue
-        lines.append(f"`{label}`")
-        for s in items:
-            lines.append(f"`{row_fn(s)}`")
-        lines.append("")
-    for sector_name, sector_tickers in SECTORS.items():
-        lines.append(f"`{sector_name}`")
-        for t in sector_tickers:
-            s = stock_map.get(t)
-            if not s or s["price"] is None: continue
-            arrow = "▲" if s["pct"] >= 0 else "▼"
-            lines.append(f"`{s['ticker']:<5} ${s['price']:>8.2f}  {arrow}{s['pct']:+.2f}%`")
-        lines.append("")
     lines.append(f"[Full report](https://allie0132.github.io/daily-stock-update/daily-reports/{today}.html)")
     msg = "\n".join(lines)
     payload = json.dumps({"chat_id": tg_chat_id, "text": msg, "parse_mode": "Markdown"}).encode()
