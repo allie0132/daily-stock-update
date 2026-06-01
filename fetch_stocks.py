@@ -76,11 +76,13 @@ for ticker in tickers:
         except Exception:
             pass
 
+        trade_amount = price * today_vol if today_vol else None
         stocks.append({
             "ticker": ticker, "price": price, "change": change, "pct": pct,
             "low52": low52, "high52": high52, "range_pct": range_pct,
             "target": target, "upside": upside,
             "week_pct": week_pct, "high_volume": high_volume,
+            "today_vol": today_vol, "trade_amount": trade_amount,
             "chart_data": chart_data,
         })
     except Exception as e:
@@ -89,6 +91,7 @@ for ticker in tickers:
             "ticker": ticker, "price": None, "change": None, "pct": None,
             "low52": None, "high52": None, "range_pct": None,
             "target": None, "upside": None, "week_pct": None, "high_volume": False,
+            "today_vol": None, "trade_amount": None,
             "chart_data": {"1mo": {"dates": [], "prices": []}, "3mo": {"dates": [], "prices": []}, "6mo": {"dates": [], "prices": []}},
         })
 
@@ -234,7 +237,24 @@ summary_html = f'''<div class="summary">
   <div class="summary-item"><span class="summary-label">Worst</span> <span class="down">{worst["ticker"]} {worst["pct"]:+.2f}%</span></div>
 </div>'''
 
-# ── Sector groups ────────────────────────────────────────────
+# ── Top trade amount ─────────────────────────────────────────
+def fmt_amount(v):
+    if v is None: return "—"
+    if v >= 1e9: return f"${v/1e9:.2f}B"
+    if v >= 1e6: return f"${v/1e6:.1f}M"
+    return f"${v:,.0f}"
+
+top_trade = sorted([s for s in valid if s["trade_amount"]], key=lambda s: s["trade_amount"], reverse=True)[:5]
+top_trade_rows = "".join(
+    f'<tr><td class="tt-ticker">{s["ticker"]}</td>'
+    f'<td class="tt-amt">{fmt_amount(s["trade_amount"])}</td>'
+    f'<td class="{"up" if s["pct"] >= 0 else "down"} plain">{"▲" if s["pct"] >= 0 else "▼"}{s["pct"]:+.2f}%</td></tr>'
+    for s in top_trade
+)
+top_trade_html = f'''<div class="section-title">💰 Top Trade Amount</div>
+<div class="card"><table class="tt-table">{top_trade_rows}</table></div>'''
+
+# ── Sector groups ─────────────────────────────────────────────
 stock_map = {s["ticker"]: s for s in stocks}
 sector_html = ""
 for sector_name, sector_tickers in SECTORS.items():
@@ -322,6 +342,12 @@ html = f"""<!DOCTYPE html>
   a {{ color: #e2e8f0; text-decoration: none; }}
   a:hover {{ text-decoration: underline; }}
   .publisher {{ color: #64748b; }}
+  .tt-table {{ width: 100%; border-collapse: collapse; font-size: 0.88rem; }}
+  .tt-table tr {{ border-bottom: 1px solid #0f1117; }}
+  .tt-table tr:last-child {{ border-bottom: none; }}
+  .tt-table td {{ padding: 7px 4px; }}
+  .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
+  .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
   .disclaimer {{ margin-top: 20px; font-size: 0.73rem; color: #475569;
                  border-top: 1px solid #1e2330; padding-top: 12px; }}
 </style>
@@ -330,6 +356,7 @@ html = f"""<!DOCTYPE html>
   <h1>📊 {report_label}</h1>
   <div class="date">{date_str}</div>
   {summary_html}
+  {top_trade_html}
   {sector_html}
   <div class="section-title">📰 Top Headlines</div>
   <ul class="news-list">{news_items}</ul>
@@ -364,6 +391,11 @@ tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
     lines = [f"📊 `{report_label} — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
+    lines.append("`💰 Top Trade Amount`")
+    for s in top_trade:
+        arrow = "▲" if s["pct"] >= 0 else "▼"
+        lines.append(f"`{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {arrow}{s['pct']:+.2f}%`")
+    lines.append("")
     for sector_name, sector_tickers in SECTORS.items():
         lines.append(f"`{sector_name}`")
         for t in sector_tickers:
