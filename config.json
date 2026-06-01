@@ -1,4 +1,7 @@
 {
-  "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "MU", "INTC", "AMD"],
-  "currency": "USD"
+  "currency": "USD",
+  "sectors": {
+    "💡 Semiconductors": ["NVDA", "MU", "INTC", "AMD"],
+    "🌐 Big Tech": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA"]
+  }
 }

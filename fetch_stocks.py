@@ -8,7 +8,8 @@ import yfinance as yf
 with open("config.json") as f:
     config = json.load(f)
 
-tickers = config["tickers"]
+SECTORS = config["sectors"]
+tickers = list(dict.fromkeys(t for ts in SECTORS.values() for t in ts))
 today = date.today().isoformat()
 now_et = datetime.now(ZoneInfo("America/New_York"))
 date_str = now_et.strftime("%A, %b %d %Y · %I:%M %p ET")
@@ -21,11 +22,6 @@ os.makedirs(report_dir, exist_ok=True)
 for f in os.listdir(report_dir):
     if f.endswith(".html") or f.endswith(".md"):
         os.remove(os.path.join(report_dir, f))
-
-SECTORS = {
-    "💡 Semiconductors": ["NVDA", "MU", "INTC", "AMD"],
-    "🌐 Big Tech":        ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA"],
-}
 
 stocks = []
 all_news = []
