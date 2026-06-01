@@ -48,6 +48,8 @@ for ticker in tickers:
         # 1-month history + 1-week change
         week_pct = None
         chart_data = {"1mo": {"dates": [], "prices": []}, "3mo": {"dates": [], "prices": []}, "6mo": {"dates": [], "prices": []}}
+        rsi = None
+        ma50 = None
         try:
             hist6 = t.history(period="6mo")
             if len(hist6) >= 2:
@@ -57,6 +59,14 @@ for ticker in tickers:
                     chart_data[period]["prices"] = [round(float(p), 2) for p in h["Close"]]
                 week_start = hist6["Close"].iloc[-6] if len(hist6) >= 6 else hist6["Close"].iloc[0]
                 week_pct = (price - week_start) / week_start * 100
+            if len(hist6) >= 15:
+                delta = hist6["Close"].diff().dropna()
+                gain = delta.clip(lower=0).rolling(14).mean()
+                loss = (-delta.clip(upper=0)).rolling(14).mean()
+                rs = gain / loss
+                rsi = float((100 - 100 / (1 + rs)).iloc[-1])
+            if len(hist6) >= 50:
+                ma50 = float(hist6["Close"].rolling(50).mean().iloc[-1])
         except Exception:
             pass
 
@@ -84,6 +94,7 @@ for ticker in tickers:
             "target": target, "upside": upside,
             "week_pct": week_pct, "high_volume": high_volume,
             "today_vol": today_vol, "trade_amount": trade_amount,
+            "rsi": rsi, "ma50": ma50,
             "chart_data": chart_data,
         })
     except Exception as e:
@@ -242,16 +253,63 @@ def card_html(s):
         </script>
       </div>'''
 
+    sig = s.get("signal")
+    sig_badge = f'<span class="sig sig-{sig["tag"]}">{sig["label"]}</span>' if sig else ""
+    reasons_html = (f'<div class="sig-reasons">{" · ".join(sig["reasons"])}</div>' if sig and sig["reasons"] else "")
+
     return f'''<div class="card">
       <div class="card-header">
         <span class="ticker">{s["ticker"]}</span>
         <span class="change {change_cls}">{arrow} {s["pct"]:+.2f}%</span>
-        {vol_badge}
+        {sig_badge}{vol_badge}
       </div>
+      {reasons_html}
       {metrics_html}
       {chart_html}
       {range_html}
     </div>'''
+
+# ── Signal scoring ───────────────────────────────────────────
+def compute_signal(s):
+    score = 0
+    reasons = []
+    if s.get("upside") is not None:
+        if s["upside"] > 30:   score += 3; reasons.append(f"analyst upside {s['upside']:+.0f}%")
+        elif s["upside"] > 15: score += 2; reasons.append(f"analyst upside {s['upside']:+.0f}%")
+        elif s["upside"] > 5:  score += 1; reasons.append(f"analyst upside {s['upside']:+.0f}%")
+        elif s["upside"] < -10: score -= 2; reasons.append(f"above target {s['upside']:+.0f}%")
+        elif s["upside"] < 0:   score -= 1; reasons.append(f"above target {s['upside']:+.0f}%")
+    if s.get("range_pct") is not None:
+        if s["range_pct"] < 20:   score += 2; reasons.append("near 52W low")
+        elif s["range_pct"] < 35: score += 1; reasons.append("low in 52W range")
+        elif s["range_pct"] > 85: score -= 2; reasons.append("near 52W high")
+        elif s["range_pct"] > 70: score -= 1; reasons.append("high in 52W range")
+    if s.get("rsi") is not None:
+        if s["rsi"] < 30:   score += 2; reasons.append(f"RSI oversold {s['rsi']:.0f}")
+        elif s["rsi"] < 40: score += 1; reasons.append(f"RSI low {s['rsi']:.0f}")
+        elif s["rsi"] > 70: score -= 2; reasons.append(f"RSI overbought {s['rsi']:.0f}")
+        elif s["rsi"] > 60: score -= 1; reasons.append(f"RSI high {s['rsi']:.0f}")
+    if s.get("ma50") and s.get("price"):
+        if s["price"] > s["ma50"] * 1.05:  score -= 1; reasons.append("far above MA50")
+        elif s["price"] > s["ma50"]:        score += 0.5
+        elif s["price"] < s["ma50"] * 0.95: score += 1; reasons.append("below MA50")
+        else:                               score -= 0.5
+    if s.get("week_pct") is not None:
+        if s["week_pct"] > 5:    score -= 1; reasons.append(f"up {s['week_pct']:+.1f}% this week")
+        elif s["week_pct"] < -5: score += 1; reasons.append(f"down {s['week_pct']:+.1f}% this week")
+
+    if score >= 4:   label, tag = "Strong Buy",  "strong-buy"
+    elif score >= 2: label, tag = "Buy",          "buy"
+    elif score >= -1: label, tag = "Hold",        "hold"
+    elif score >= -3: label, tag = "Sell",        "sell"
+    else:             label, tag = "Strong Sell", "strong-sell"
+    return {"score": score, "label": label, "tag": tag, "reasons": reasons[:3]}
+
+for s in stocks:
+    if s["price"] is not None:
+        s["signal"] = compute_signal(s)
+    else:
+        s["signal"] = None
 
 # ── Market summary ───────────────────────────────────────────
 valid = [s for s in stocks if s["price"] is not None]
@@ -266,6 +324,25 @@ summary_html = f'''<div class="summary">
   <div class="summary-item"><span class="summary-label">Best</span> <span class="up">{best["ticker"]} {best["pct"]:+.2f}%</span></div>
   <div class="summary-item"><span class="summary-label">Worst</span> <span class="down">{worst["ticker"]} {worst["pct"]:+.2f}%</span></div>
 </div>'''
+
+# ── Signals overview ─────────────────────────────────────────
+sig_order = {"Strong Buy": 0, "Buy": 1, "Hold": 2, "Sell": 3, "Strong Sell": 4}
+sig_groups = {}
+for s in valid:
+    lbl = s["signal"]["label"]
+    sig_groups.setdefault(lbl, []).append(s)
+
+signals_html = '<div class="section-title">🔎 Buy / Sell Signals</div><div class="card">'
+for lbl in ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]:
+    items = sig_groups.get(lbl, [])
+    if not items: continue
+    tag = items[0]["signal"]["tag"]
+    signals_html += f'<div style="margin-bottom:10px"><span class="sig sig-{tag}">{lbl}</span><div class="signals-grid" style="margin-top:6px">'
+    for s in sorted(items, key=lambda x: x["signal"]["score"], reverse=True):
+        reasons = " · ".join(s["signal"]["reasons"]) if s["signal"]["reasons"] else "—"
+        signals_html += f'<div class="sig-card"><div class="sig-card-ticker">{s["ticker"]}</div><div class="sig-card-reason">{reasons}</div></div>'
+    signals_html += '</div></div>'
+signals_html += '</div>'
 
 # ── Dynamic ranked lists ─────────────────────────────────────
 def fmt_amount(v):
@@ -409,6 +486,17 @@ html = f"""<!DOCTYPE html>
   .tt-table tr {{ border-bottom: 1px solid #0f1117; }}
   .tt-table tr:last-child {{ border-bottom: none; }}
   .tt-table td {{ padding: 7px 4px; }}
+  .sig {{ font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; }}
+  .sig-strong-buy  {{ background: #14532d; color: #4ade80; }}
+  .sig-buy         {{ background: #1e3a1e; color: #86efac; }}
+  .sig-hold        {{ background: #2d2a14; color: #fde68a; }}
+  .sig-sell        {{ background: #3a1e1e; color: #fca5a5; }}
+  .sig-strong-sell {{ background: #7f1d1d; color: #f87171; }}
+  .sig-reasons {{ font-size: 0.7rem; color: #64748b; margin-bottom: 8px; }}
+  .signals-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }}
+  .sig-card {{ background: #0f1117; border-radius: 8px; padding: 8px 10px; }}
+  .sig-card-ticker {{ font-weight: 700; color: #f8fafc; font-size: 0.9rem; }}
+  .sig-card-reason {{ font-size: 0.68rem; color: #64748b; margin-top: 3px; }}
   .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
   .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
   .tt-price {{ color: #94a3b8; width: 80px; }}
@@ -420,6 +508,7 @@ html = f"""<!DOCTYPE html>
   <h1>📊 {report_label}</h1>
   <div class="date">{date_str}</div>
   {summary_html}
+  {signals_html}
   {dynamic_lists_html}
   {sector_html}
   <div class="section-title">📰 Top Headlines</div>
@@ -455,6 +544,14 @@ tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
     lines = [f"📊 `{report_label} — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
+    sig_icons = {"Strong Buy": "🟢🟢", "Buy": "🟢", "Hold": "🟡", "Sell": "🔴", "Strong Sell": "🔴🔴"}
+    lines.append("`🔎 Signals`")
+    for lbl in ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]:
+        items_sig = sig_groups.get(lbl, [])
+        if not items_sig: continue
+        tickers_str = "  ".join(s["ticker"] for s in items_sig)
+        lines.append(f"`{sig_icons[lbl]} {lbl:<12} {tickers_str}`")
+    lines.append("")
     for label, items, row_fn in [
         ("💰 Top Trade Amount", top_trade,   lambda s: f"{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
         ("📈 Top Increasing",   top_gaining,  lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
