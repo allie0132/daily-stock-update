@@ -377,16 +377,17 @@ for s in valid:
     lbl = s["signal"]["label"]
     sig_groups.setdefault(lbl, []).append(s)
 
-signals_html = '<div class="section-title">🔎 Buy / Sell Signals</div>'
+signals_html = '<div class="section-title">🔎 Buy / Sell Signals</div><div class="card">'
 for lbl in ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]:
     items = sig_groups.get(lbl, [])
     if not items: continue
     tag = items[0]["signal"]["tag"]
-    signals_html += f'<div class="card" style="margin-bottom:10px"><div style="margin-bottom:10px"><span class="sig sig-{tag}">{lbl}</span></div>'
+    signals_html += f'<div class="sig-group"><span class="sig sig-{tag}">{lbl}</span><ul class="sig-list">'
     for s in sorted(items, key=lambda x: x["signal"]["score"], reverse=True):
         explanation = s["signal"].get("explanation") or "No analysis available."
-        signals_html += f'<div class="sig-card" style="margin-bottom:8px"><div class="sig-card-ticker">{s["ticker"]}</div><div class="sig-card-reason">{explanation}</div></div>'
-    signals_html += '</div>'
+        signals_html += f'<li><span class="sig-list-ticker">{s["ticker"]}</span><span class="sig-list-reason">{explanation}</span></li>'
+    signals_html += '</ul></div>'
+signals_html += '</div>'
 
 # ── Dynamic ranked lists ─────────────────────────────────────
 def fmt_amount(v):
@@ -536,11 +537,13 @@ html = f"""<!DOCTYPE html>
   .sig-hold        {{ background: #2d2a14; color: #fde68a; }}
   .sig-sell        {{ background: #3a1e1e; color: #fca5a5; }}
   .sig-strong-sell {{ background: #7f1d1d; color: #f87171; }}
-  .sig-reasons {{ font-size: 0.7rem; color: #64748b; margin-bottom: 8px; }}
-  .signals-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }}
-  .sig-card {{ background: #0f1117; border-radius: 8px; padding: 8px 10px; }}
-  .sig-card-ticker {{ font-weight: 700; color: #f8fafc; font-size: 0.9rem; }}
-  .sig-card-reason {{ font-size: 0.68rem; color: #64748b; margin-top: 3px; }}
+  .sig-group {{ margin-bottom: 14px; }}
+  .sig-group:last-child {{ margin-bottom: 0; }}
+  .sig-list {{ list-style: none; margin-top: 8px; }}
+  .sig-list li {{ display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid #1a2236; font-size: 0.85rem; line-height: 1.4; }}
+  .sig-list li:last-child {{ border-bottom: none; }}
+  .sig-list-ticker {{ font-weight: 700; color: #f8fafc; min-width: 46px; flex-shrink: 0; }}
+  .sig-list-reason {{ color: #94a3b8; }}
   .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
   .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
   .tt-price {{ color: #94a3b8; width: 80px; }}
