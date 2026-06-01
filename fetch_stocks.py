@@ -587,16 +587,18 @@ print(f"Reports saved: {md_path}, {html_path}")
 tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
-    lines = [f"📊 `{report_label} — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
-    sig_icons = {"Strong Buy": "🟢🟢", "Buy": "🟢", "Hold": "🟡", "Sell": "🔴", "Strong Sell": "🔴🔴"}
-    lines.append("`🔎 Signals`")
-    for lbl in ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]:
-        items_sig = sig_groups.get(lbl, [])
-        if not items_sig: continue
-        tickers_str = "  ".join(s["ticker"] for s in items_sig)
-        lines.append(f"`{sig_icons[lbl]} {lbl:<12} {tickers_str}`")
-    lines.append("")
-    lines.append(f"[Full report](https://allie0132.github.io/daily-stock-update/daily-reports/{today}.html)")
+    lines = [f"📊 *{report_label} — {today}*", f"▲ {up_count} up  ▼ {down_count} down  |  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%"]
+    for label, items, row_fn in [
+        ("📈 Top Gaining",       top_gaining,  lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  ▲{s['pct']:+.2f}%"),
+        ("📉 Top Losing",        top_losing,   lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  ▼{s['pct']:+.2f}%"),
+        ("💰 Top Trade Amount",  top_trade,    lambda s: f"{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
+        ("🎯 Top Analyst Upside", top_upside,  lambda s: f"{s['ticker']:<5} → ${s['target']:.2f} ({s['upside']:+.1f}%)"),
+    ]:
+        if not items: continue
+        lines.append(f"\n`{label}`")
+        for s in items:
+            lines.append(f"`{row_fn(s)}`")
+    lines.append(f"\n[Full report](https://allie0132.github.io/daily-stock-update/daily-reports/{today}.html)")
     msg = "\n".join(lines)
     payload = json.dumps({"chat_id": tg_chat_id, "text": msg, "parse_mode": "Markdown"}).encode()
     req = urllib.request.Request(
