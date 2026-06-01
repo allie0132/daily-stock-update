@@ -237,22 +237,54 @@ summary_html = f'''<div class="summary">
   <div class="summary-item"><span class="summary-label">Worst</span> <span class="down">{worst["ticker"]} {worst["pct"]:+.2f}%</span></div>
 </div>'''
 
-# ── Top trade amount ─────────────────────────────────────────
+# ── Dynamic ranked lists ─────────────────────────────────────
 def fmt_amount(v):
     if v is None: return "—"
     if v >= 1e9: return f"${v/1e9:.2f}B"
     if v >= 1e6: return f"${v/1e6:.1f}M"
     return f"${v:,.0f}"
 
-top_trade = sorted([s for s in valid if s["trade_amount"]], key=lambda s: s["trade_amount"], reverse=True)[:5]
-top_trade_rows = "".join(
-    f'<tr><td class="tt-ticker">{s["ticker"]}</td>'
-    f'<td class="tt-amt">{fmt_amount(s["trade_amount"])}</td>'
-    f'<td class="{"up" if s["pct"] >= 0 else "down"} plain">{"▲" if s["pct"] >= 0 else "▼"}{s["pct"]:+.2f}%</td></tr>'
-    for s in top_trade
+N = 5
+
+top_trade    = sorted([s for s in valid if s["trade_amount"]], key=lambda s: s["trade_amount"], reverse=True)[:N]
+top_gaining  = sorted(valid, key=lambda s: s["pct"], reverse=True)[:N]
+top_losing   = sorted(valid, key=lambda s: s["pct"])[:N]
+top_upside   = sorted([s for s in valid if s["upside"] is not None], key=lambda s: s["upside"], reverse=True)[:N]
+
+def ranked_rows(items, cols_fn):
+    return "".join(
+        f'<tr>{"".join(f"<td>{c}</td>" for c in cols_fn(s))}</tr>'
+        for s in items
+    )
+
+def pct_cell(val):
+    cls = "up plain" if val >= 0 else "down plain"
+    arrow = "▲" if val >= 0 else "▼"
+    return f'<span class="{cls}">{arrow}{val:+.2f}%</span>'
+
+def ranked_html(title, items, cols_fn):
+    rows = ranked_rows(items, cols_fn)
+    return f'<div class="section-title">{title}</div><div class="card"><table class="tt-table">{rows}</table></div>'
+
+dynamic_lists_html = (
+    ranked_html("💰 Top Trade Amount", top_trade,
+        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
+                   f'<span class="tt-amt">{fmt_amount(s["trade_amount"])}</span>',
+                   pct_cell(s["pct"])]) +
+    ranked_html("📈 Top Increasing", top_gaining,
+        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
+                   f'<span class="tt-price">${s["price"]:.2f}</span>',
+                   pct_cell(s["pct"])]) +
+    ranked_html("📉 Top Decreasing", top_losing,
+        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
+                   f'<span class="tt-price">${s["price"]:.2f}</span>',
+                   pct_cell(s["pct"])]) +
+    (ranked_html("🎯 Top Analyst Upside", top_upside,
+        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
+                   f'<span class="tt-price">${s["price"]:.2f}</span>',
+                   f'<span class="up plain">→ ${s["target"]:.2f} ({s["upside"]:+.1f}%)</span>'])
+     if top_upside else "")
 )
-top_trade_html = f'''<div class="section-title">💰 Top Trade Amount</div>
-<div class="card"><table class="tt-table">{top_trade_rows}</table></div>'''
 
 # ── Sector groups ─────────────────────────────────────────────
 stock_map = {s["ticker"]: s for s in stocks}
@@ -348,6 +380,7 @@ html = f"""<!DOCTYPE html>
   .tt-table td {{ padding: 7px 4px; }}
   .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
   .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
+  .tt-price {{ color: #94a3b8; width: 80px; }}
   .disclaimer {{ margin-top: 20px; font-size: 0.73rem; color: #475569;
                  border-top: 1px solid #1e2330; padding-top: 12px; }}
 </style>
@@ -356,7 +389,7 @@ html = f"""<!DOCTYPE html>
   <h1>📊 {report_label}</h1>
   <div class="date">{date_str}</div>
   {summary_html}
-  {top_trade_html}
+  {dynamic_lists_html}
   {sector_html}
   <div class="section-title">📰 Top Headlines</div>
   <ul class="news-list">{news_items}</ul>
@@ -391,11 +424,17 @@ tg_token = os.environ.get("TELEGRAM_TOKEN")
 tg_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 if tg_token and tg_chat_id:
     lines = [f"📊 `{report_label} — {today}`", f"`▲ {up_count} up  ▼ {down_count} down  Best: {best['ticker']} {best['pct']:+.2f}%  Worst: {worst['ticker']} {worst['pct']:+.2f}%`\n"]
-    lines.append("`💰 Top Trade Amount`")
-    for s in top_trade:
-        arrow = "▲" if s["pct"] >= 0 else "▼"
-        lines.append(f"`{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {arrow}{s['pct']:+.2f}%`")
-    lines.append("")
+    for label, items, row_fn in [
+        ("💰 Top Trade Amount", top_trade,   lambda s: f"{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
+        ("📈 Top Increasing",   top_gaining,  lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
+        ("📉 Top Decreasing",   top_losing,   lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  {'▼' if s['pct']<0 else '▲'}{s['pct']:+.2f}%"),
+        ("🎯 Top Analyst Upside", top_upside, lambda s: f"{s['ticker']:<5} → ${s['target']:.2f} ({s['upside']:+.1f}%)"),
+    ]:
+        if not items: continue
+        lines.append(f"`{label}`")
+        for s in items:
+            lines.append(f"`{row_fn(s)}`")
+        lines.append("")
     for sector_name, sector_tickers in SECTORS.items():
         lines.append(f"`{sector_name}`")
         for t in sector_tickers:
