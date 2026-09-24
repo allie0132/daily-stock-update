@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Stock Summary</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #0f1117; color: #e2e8f0; padding: 16px; max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 1.3rem; font-weight: 700; color: #f8fafc; }
+  .date { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }
+  .summary { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+              background: #1e2330; border-radius: 10px; padding: 10px 14px;
+              margin-bottom: 20px; font-size: 0.9rem; font-weight: 600; }
+  .summary-item { display: flex; align-items: center; gap: 4px; }
+  .summary-label { color: #64748b; font-weight: 400; font-size: 0.8rem; }
+  .summary-divider { width: 1px; height: 16px; background: #475569; }
+  .section-title { font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
+                    text-transform: uppercase; color: #64748b; margin: 20px 0 10px; }
+  .card { background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .card-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ticker { font-size: 1.15rem; font-weight: 700; color: #f8fafc; flex: 1; }
+  .change { font-size: 0.95rem; font-weight: 600; padding: 2px 10px; border-radius: 6px; }
+  .vol-badge { font-size: 0.7rem; font-weight: 600; background: #78350f44;
+                color: #fbbf24; padding: 2px 6px; border-radius: 4px; }
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .metric { background: #0f1117; border-radius: 8px; padding: 8px 10px;
+             display: flex; flex-direction: column; gap: 3px; }
+  .metric-label { font-size: 0.68rem; color: #64748b; text-transform: uppercase;
+                   letter-spacing: .06em; font-weight: 500; }
+  .metric-value { font-size: 0.9rem; font-weight: 600; }
+  .price-val { color: #f1f5f9; }
+  .up { color: #4ade80; background: #14532d33; }
+  .down { color: #f87171; background: #7f1d1d33; }
+  .up.plain, .down.plain { background: none; }
+  .change.up, .change.down { padding: 2px 10px; border-radius: 6px; }
+  .neutral { color: #64748b; }
+  .range-section { margin-top: 4px; }
+  .range-label-row { display: flex; justify-content: space-between; align-items: baseline;
+                       font-size: 0.7rem; color: #64748b; margin-bottom: 6px; }
+  .range-label-text { text-transform: uppercase; letter-spacing: .05em; font-weight: 500; }
+  .range-hint { font-size: 0.65rem; color: #475569; text-transform: none; letter-spacing: 0; margin-left: 4px; }
+  .range-pct { color: #94a3b8; }
+  .range-wrap { display: flex; align-items: center; gap: 8px; }
+  .range-bar { flex: 1; height: 6px; background: #475569; border-radius: 3px; overflow: hidden; }
+  .range-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 3px; }
+  .range-val { font-size: 0.68rem; color: #64748b; text-align: center; line-height: 1.3; }
+  .chart-section { margin-top: 12px; }
+  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .chart-label { font-size: 0.68rem; color: #475569; text-transform: uppercase; letter-spacing: .06em; }
+  .chart-btns { display: flex; gap: 4px; }
+  .cbtn { background: #0f1117; border: 1px solid #1e293b; color: #475569; font-size: 0.7rem;
+            font-weight: 600; padding: 2px 7px; border-radius: 4px; cursor: pointer; }
+  .cbtn.active { background: #1e293b; color: #94a3b8; border-color: #475569; }
+  .cbtn:hover { color: #cbd5e1; }
+  .news-list { list-style: none; }
+  .news-list li { padding: 10px 0; border-bottom: 1px solid #1e2330;
+                   font-size: 0.85rem; line-height: 1.5; }
+  .news-list li:last-child { border-bottom: none; }
+  .news-ticker { color: #60a5fa; font-weight: 600; margin-right: 4px; }
+  a { color: #e2e8f0; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .publisher { color: #64748b; }
+  .tt-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .tt-table tr { border-bottom: 1px solid #0f1117; }
+  .tt-table tr:last-child { border-bottom: none; }
+  .tt-table td { padding: 7px 4px; }
+  .sig { font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .sig-strong-buy  { background: #14532d; color: #4ade80; }
+  .sig-buy         { background: #1e3a1e; color: #86efac; }
+  .sig-hold        { background: #2d2a14; color: #fde68a; }
+  .sig-sell        { background: #3a1e1e; color: #fca5a5; }
+  .sig-strong-sell { background: #7f1d1d; color: #f87171; }
+  .sig-group { margin-bottom: 14px; }
+  .sig-group:last-child { margin-bottom: 0; }
+  .sig-list { list-style: none; margin-top: 8px; }
+  .sig-list li { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid #1a2236; font-size: 0.85rem; line-height: 1.4; }
+  .sig-list li:last-child { border-bottom: none; }
+  .sig-list-ticker { font-weight: 700; color: #f8fafc; min-width: 46px; flex-shrink: 0; }
+  .sig-list-reason { color: #94a3b8; }
+  .tt-ticker { font-weight: 700; color: #f8fafc; width: 60px; }
+  .tt-amt { font-weight: 600; color: #94a3b8; width: 100px; }
+  .tt-price { color: #94a3b8; width: 80px; }
+  .disclaimer { margin-top: 20px; font-size: 0.73rem; color: #475569;
+                 border-top: 1px solid #1e2330; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>📊 🔔 Market Open</h1>
+  <div class="date">Thursday, Sep 24 2026 · 01:53 PM ET</div>
+  <div class="summary">
+  <div class="summary-item"><span class="up">▲ 6 Up</span></div>
+  <div class="summary-item"><span class="down">▼ 4 Down</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-item"><span class="summary-label">Best</span> <span class="up">META +4.84%</span></div>
+  <div class="summary-item"><span class="summary-label">Worst</span> <span class="down">MSFT -0.82%</span></div>
+</div>
+  <div class="section-title">🔎 Buy / Sell Signals</div><div class="card"><div class="sig-group"><span class="sig sig-buy">Buy</span><ul class="sig-list"><li><span class="sig-list-ticker">AMZN</span><span class="sig-list-reason">Analyst consensus target $329.54 implies +32% upside — strong undervaluation signal. RSI at 39 — approaching oversold territory, potential reversal ahead.</span></li><li><span class="sig-list-ticker">NVDA</span><span class="sig-list-reason">Analyst consensus target $327.70 implies +46% upside — strong undervaluation signal. In the upper portion of its 52-week range (83%) — elevated vs recent history.</span></li></ul></div><div class="sig-group"><span class="sig sig-hold">Hold</span><ul class="sig-list"><li><span class="sig-list-ticker">MSFT</span><span class="sig-list-reason">Analyst target $577.26 implies +16% upside. In the upper portion of its 52-week range (72%) — elevated vs recent history.</span></li><li><span class="sig-list-ticker">GOOGL</span><span class="sig-list-reason">Analyst target $429.46 implies +26% upside.</span></li><li><span class="sig-list-ticker">MU</span><span class="sig-list-reason">Analyst consensus target $1515.54 implies +42% upside — strong undervaluation signal. In the upper portion of its 52-week range (83%) — elevated vs recent history. RSI at 64 — elevated momentum, may be getting stretched. Price is 14% above its 50-day moving average — extended, mean reversion risk. Up +9.3% this week — short-term momentum may be overdone.</span></li><li><span class="sig-list-ticker">TSLA</span><span class="sig-list-reason">Price is 9% above its 50-day moving average — extended, mean reversion risk.</span></li></ul></div><div class="sig-group"><span class="sig sig-sell">Sell</span><ul class="sig-list"><li><span class="sig-list-ticker">AAPL</span><span class="sig-list-reason">Stock has exceeded analyst target of $328.22 by 3%. Trading near its 52-week high (92% of range) — limited upside from current levels.</span></li></ul></div><div class="sig-group"><span class="sig sig-strong-sell">Strong Sell</span><ul class="sig-list"><li><span class="sig-list-ticker">INTC</span><span class="sig-list-reason">Stock has exceeded analyst target of $116.40 by 7%. In the upper portion of its 52-week range (85%) — elevated vs recent history. RSI at 78 — overbought, high risk of near-term pullback. Price is 27% above its 50-day moving average — extended, mean reversion risk. Up +15.0% this week — short-term momentum may be overdone.</span></li><li><span class="sig-list-ticker">META</span><span class="sig-list-reason">Trading near its 52-week high (98% of range) — limited upside from current levels. RSI at 85 — overbought, high risk of near-term pullback. Price is 25% above its 50-day moving average — extended, mean reversion risk. Up +12.9% this week — short-term momentum may be overdone.</span></li><li><span class="sig-list-ticker">AMD</span><span class="sig-list-reason">Stock has exceeded analyst target of $616.51 by 1%. Trading near its 52-week high (98% of range) — limited upside from current levels. RSI at 81 — overbought, high risk of near-term pullback. Price is 24% above its 50-day moving average — extended, mean reversion risk. Up +13.8% this week — short-term momentum may be overdone.</span></li></ul></div></div>
+  <div class="section-title">💰 Top Trade Amount</div><div class="card"><table class="tt-table"><tr><td><span class="tt-ticker">META</span></td><td><span class="tt-amt">$19.01B</span></td><td><span class="up plain">▲+4.84%</span></td></tr><tr><td><span class="tt-ticker">MU</span></td><td><span class="tt-amt">$15.51B</span></td><td><span class="down plain">▼-0.36%</span></td></tr><tr><td><span class="tt-ticker">INTC</span></td><td><span class="tt-amt">$10.23B</span></td><td><span class="up plain">▲+2.47%</span></td></tr><tr><td><span class="tt-ticker">AMD</span></td><td><span class="tt-amt">$10.19B</span></td><td><span class="up plain">▲+0.93%</span></td></tr><tr><td><span class="tt-ticker">NVDA</span></td><td><span class="tt-amt">$9.58B</span></td><td><span class="down plain">▼-0.46%</span></td></tr></table></div><div class="section-title">📈 Top Increasing</div><div class="card"><table class="tt-table"><tr><td><span class="tt-ticker">META</span></td><td><span class="tt-price">$769.50</span></td><td><span class="up plain">▲+4.84%</span></td></tr><tr><td><span class="tt-ticker">LLY</span></td><td><span class="tt-price">$1188.44</span></td><td><span class="up plain">▲+3.25%</span></td></tr><tr><td><span class="tt-ticker">INTC</span></td><td><span class="tt-price">$125.14</span></td><td><span class="up plain">▲+2.47%</span></td></tr><tr><td><span class="tt-ticker">DIS</span></td><td><span class="tt-price">$104.84</span></td><td><span class="up plain">▲+1.33%</span></td></tr><tr><td><span class="tt-ticker">V</span></td><td><span class="tt-price">$365.73</span></td><td><span class="up plain">▲+1.16%</span></td></tr></table></div><div class="section-title">📉 Top Decreasing</div><div class="card"><table class="tt-table"><tr><td><span class="tt-ticker">ARM</span></td><td><span class="tt-price">$310.80</span></td><td><span class="down plain">▼-6.54%</span></td></tr><tr><td><span class="tt-ticker">ACN</span></td><td><span class="tt-price">$179.56</span></td><td><span class="down plain">▼-2.16%</span></td></tr><tr><td><span class="tt-ticker">WMT</span></td><td><span class="tt-price">$108.43</span></td><td><span class="down plain">▼-1.90%</span></td></tr><tr><td><span class="tt-ticker">QCOM</span></td><td><span class="tt-price">$193.62</span></td><td><span class="down plain">▼-1.83%</span></td></tr><tr><td><span class="tt-ticker">ABT</span></td><td><span class="tt-price">$101.61</span></td><td><span class="down plain">▼-1.82%</span></td></tr></table></div><div class="section-title">🎯 Top Analyst Upside</div><div class="card"><table class="tt-table"><tr><td><span class="tt-ticker">NVDA</span></td><td><span class="tt-price">$224.01</span></td><td><span class="up plain">→ $327.70 (+46.3%)</span></td></tr><tr><td><span class="tt-ticker">MU</span></td><td><span class="tt-price">$1068.60</span></td><td><span class="up plain">→ $1515.54 (+41.8%)</span></td></tr><tr><td><span class="tt-ticker">AMZN</span></td><td><span class="tt-price">$248.98</span></td><td><span class="up plain">→ $329.54 (+32.4%)</span></td></tr><tr><td><span class="tt-ticker">GOOGL</span></td><td><span class="tt-price">$341.10</span></td><td><span class="up plain">→ $429.46 (+25.9%)</span></td></tr><tr><td><span class="tt-ticker">MSFT</span></td><td><span class="tt-price">$495.90</span></td><td><span class="up plain">→ $577.26 (+16.4%)</span></td></tr></table></div>
+  <div class="section-title">💡 Semiconductors</div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">NVDA</span>
+        <span class="change down">▼ -0.46%</span>
+        <span class="sig sig-buy">Buy</span>
+      </div>
+      <div class="sig-reasons">analyst upside +46% · high in 52W range</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$224.01</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="down plain">▼ -0.46%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +2.13%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$327.70 (+46.3%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('NVDA','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('NVDA','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('NVDA','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_NVDA" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["NVDA"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [209.43, 227.73, 217.31, 220.53, 217.2, 224.16, 228.19, 230.1, 225.48, 223.42, 218.36, 218.29, 210.96, 212.17, 213.9, 219.34, 222.27, 227.38, 228.87, 225.51, 224.01]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [192.31, 194.75, 199.87, 197.36, 194.61, 195.33, 196.71, 203.89, 202.55, 210.72, 203.3, 211.56, 212.26, 207.17, 202.58, 203.05, 207.06, 211.82, 208.53, 206.61, 196.29, 196.79, 189.8, 194.82, 200.53, 206.41, 211.7, 218.97, 218.75, 223.71, 217.31, 217.26, 223.84, 225.05, 224.91, 224.76, 219.49, 217.32, 216.61, 214.48, 208.25, 212.81, 209.43, 227.73, 217.31, 220.53, 217.2, 224.16, 228.19, 230.1, 225.48, 223.42, 218.36, 218.29, 210.96, 212.17, 213.9, 219.34, 222.27, 227.38, 228.87, 225.51, 224.01]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [174.8, 178.27, 170.85, 167.14, 164.79, 174.0, 175.35, 176.99, 177.23, 177.69, 181.66, 183.49, 188.2, 188.88, 196.06, 198.42, 197.9, 201.22, 201.6, 199.42, 202.04, 199.18, 207.8, 216.12, 212.68, 208.77, 199.11, 198.0, 198.03, 196.05, 207.36, 211.02, 214.71, 218.94, 220.28, 225.31, 235.2, 224.81, 221.81, 220.11, 222.96, 219.01, 214.84, 214.37, 212.12, 213.76, 210.66, 223.85, 222.31, 214.26, 218.42, 204.87, 208.41, 207.96, 200.2, 204.64, 204.96, 212.21, 207.18, 204.42, 210.45, 208.42, 199.82, 198.78, 195.52, 192.31, 194.75, 199.87, 197.36, 194.61, 195.33, 196.71, 203.89, 202.55, 210.72, 203.3, 211.56, 212.26, 207.17, 202.58, 203.05, 207.06, 211.82, 208.53, 206.61, 196.29, 196.79, 189.8, 194.82, 200.53, 206.41, 211.7, 218.97, 218.75, 223.71, 217.31, 217.26, 223.84, 225.05, 224.91, 224.76, 219.49, 217.32, 216.61, 214.48, 208.25, 212.81, 209.43, 227.73, 217.31, 220.53, 217.2, 224.16, 228.19, 230.1, 225.48, 223.42, 218.36, 218.29, 210.96, 212.17, 213.9, 219.34, 222.27, 227.38, 228.87, 225.51, 224.01]}};
+            var ctx = document.getElementById("chart_NVDA").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["NVDA"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [209.43, 227.73, 217.31, 220.53, 217.2, 224.16, 228.19, 230.1, 225.48, 223.42, 218.36, 218.29, 210.96, 212.17, 213.9, 219.34, 222.27, 227.38, 228.87, 225.51, 224.01],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">83%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$164.27</span>
+          <div class="range-bar"><div class="range-fill" style="width:82.7%"></div></div>
+          <span class="range-val">High<br>$236.54</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">MU</span>
+        <span class="change down">▼ -0.36%</span>
+        <span class="sig sig-hold">Hold</span>
+      </div>
+      <div class="sig-reasons">analyst upside +42% · high in 52W range · RSI high 64</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$1068.60</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="down plain">▼ -0.36%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +9.32%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$1515.54 (+41.8%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('MU','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('MU','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('MU','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_MU" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["MU"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [938.4, 935.39, 932.86, 958.73, 933.44, 956.08, 958.16, 1016.59, 1000.26, 1027.77, 977.41, 975.26, 924.03, 927.6, 926.55, 977.5, 1015.8, 1043.96, 1096.16, 1071.88, 1068.68]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [1132.16, 1145.1, 1154.11, 1032.12, 975.41, 984.75, 938.38, 948.8, 991.64, 979.3, 937.0, 983.12, 904.28, 853.2, 848.95, 865.46, 970.82, 959.48, 990.21, 920.95, 900.2, 820.53, 739.0, 874.66, 823.03, 829.5, 892.67, 893.19, 881.47, 877.57, 861.0, 868.52, 911.29, 949.83, 971.66, 1011.75, 940.76, 937.11, 974.33, 966.78, 910.43, 932.97, 938.4, 935.39, 932.86, 958.73, 933.44, 956.08, 958.16, 1016.59, 1000.26, 1027.77, 977.41, 975.26, 924.03, 927.6, 926.55, 977.5, 1015.8, 1043.96, 1096.16, 1071.88, 1068.68]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [395.3, 381.87, 355.26, 357.02, 321.75, 337.79, 367.79, 366.18, 377.7, 377.52, 406.67, 421.45, 420.53, 426.49, 465.59, 456.16, 457.16, 455.0, 448.35, 449.31, 487.41, 481.65, 496.64, 524.48, 504.21, 518.38, 517.08, 542.13, 576.36, 640.1, 666.49, 646.53, 746.7, 795.21, 766.46, 803.51, 775.89, 724.55, 681.44, 698.63, 731.88, 761.98, 750.88, 895.74, 928.27, 923.38, 970.85, 1035.34, 1063.94, 1079.4, 995.85, 863.88, 949.13, 935.75, 891.74, 995.72, 981.46, 1087.82, 1020.6, 1043.03, 1133.82, 1211.19, 1051.61, 1048.35, 1213.37, 1132.16, 1145.1, 1154.11, 1032.12, 975.41, 984.75, 938.38, 948.8, 991.64, 979.3, 937.0, 983.12, 904.28, 853.2, 848.95, 865.46, 970.82, 959.48, 990.21, 920.95, 900.2, 820.53, 739.0, 874.66, 823.03, 829.5, 892.67, 893.19, 881.47, 877.57, 861.0, 868.52, 911.29, 949.83, 971.66, 1011.75, 940.76, 937.11, 974.33, 966.78, 910.43, 932.97, 938.4, 935.39, 932.86, 958.73, 933.44, 956.08, 958.16, 1016.59, 1000.26, 1027.77, 977.41, 975.26, 924.03, 927.6, 926.55, 977.5, 1015.8, 1043.96, 1096.16, 1071.88, 1068.68]}};
+            var ctx = document.getElementById("chart_MU").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["MU"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [938.4, 935.39, 932.86, 958.73, 933.44, 956.08, 958.16, 1016.59, 1000.26, 1027.77, 977.41, 975.26, 924.03, 927.6, 926.55, 977.5, 1015.8, 1043.96, 1096.16, 1071.88, 1068.68],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">83%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$154.65</span>
+          <div class="range-bar"><div class="range-fill" style="width:83.1%"></div></div>
+          <span class="range-val">High<br>$1255.00</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">INTC</span>
+        <span class="change up">▲ +2.47%</span>
+        <span class="sig sig-strong-sell">Strong Sell</span>
+      </div>
+      <div class="sig-reasons">above target -7% · high in 52W range · RSI overbought 78</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$125.14</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +2.47%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +15.02%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="down plain">$116.40 (-7.0%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('INTC','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('INTC','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('INTC','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_INTC" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["INTC"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [88.24, 92.09, 89.47, 89.51, 88.97, 90.05, 91.67, 95.8, 104.47, 106.24, 100.32, 102.94, 97.19, 97.14, 101.05, 108.8, 108.6, 121.78, 123.86, 122.6, 125.13]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [128.32, 131.72, 139.63, 127.02, 120.35, 122.2, 110.39, 110.24, 112.54, 109.84, 103.12, 107.76, 102.99, 96.98, 95.04, 97.06, 105.45, 102.62, 100.23, 92.32, 91.67, 86.3, 81.88, 91.13, 90.2, 91.0, 100.86, 101.06, 99.81, 101.65, 97.52, 97.71, 100.95, 104.56, 102.5, 103.49, 96.69, 92.8, 92.13, 90.07, 87.26, 87.48, 88.24, 92.09, 89.47, 89.51, 88.97, 90.05, 91.67, 95.8, 104.47, 106.24, 100.32, 102.94, 97.19, 97.14, 101.05, 108.8, 108.6, 121.78, 123.86, 122.6, 125.13]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [44.06, 47.18, 44.1, 43.13, 41.19, 44.13, 48.03, 50.38, 50.78, 52.91, 58.95, 61.72, 62.38, 65.18, 63.81, 64.94, 68.5, 68.5, 65.7, 66.26, 65.27, 66.78, 82.54, 84.99, 84.52, 94.75, 94.48, 99.62, 95.78, 108.15, 113.01, 109.62, 124.92, 129.44, 120.61, 120.29, 115.93, 108.77, 108.17, 110.8, 118.96, 118.5, 119.84, 123.52, 121.77, 120.89, 114.68, 109.33, 107.93, 112.71, 111.78, 99.17, 110.27, 107.92, 107.04, 116.96, 124.57, 127.86, 117.05, 121.1, 133.99, 140.94, 132.28, 131.65, 132.87, 128.32, 131.72, 139.63, 127.02, 120.35, 122.2, 110.39, 110.24, 112.54, 109.84, 103.12, 107.76, 102.99, 96.98, 95.04, 97.06, 105.45, 102.62, 100.23, 92.32, 91.67, 86.3, 81.88, 91.13, 90.2, 91.0, 100.86, 101.06, 99.81, 101.65, 97.52, 97.71, 100.95, 104.56, 102.5, 103.49, 96.69, 92.8, 92.13, 90.07, 87.26, 87.48, 88.24, 92.09, 89.47, 89.51, 88.97, 90.05, 91.67, 95.8, 104.47, 106.24, 100.32, 102.94, 97.19, 97.14, 101.05, 108.8, 108.6, 121.78, 123.86, 122.6, 125.13]}};
+            var ctx = document.getElementById("chart_INTC").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["INTC"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [88.24, 92.09, 89.47, 89.51, 88.97, 90.05, 91.67, 95.8, 104.47, 106.24, 100.32, 102.94, 97.19, 97.14, 101.05, 108.8, 108.6, 121.78, 123.86, 122.6, 125.13],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">85%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$31.21</span>
+          <div class="range-bar"><div class="range-fill" style="width:84.5%"></div></div>
+          <span class="range-val">High<br>$142.35</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">AMD</span>
+        <span class="change up">▲ +0.93%</span>
+        <span class="sig sig-strong-sell">Strong Sell</span>
+      </div>
+      <div class="sig-reasons">above target -1% · near 52W high · RSI overbought 81</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$620.23</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +0.93%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +13.78%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="down plain">$616.51 (-0.6%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('AMD','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('AMD','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('AMD','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_AMD" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["AMD"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [480.93, 476.67, 465.58, 470.72, 459.61, 457.06, 456.16, 477.57, 505.74, 521.1, 503.6, 516.13, 493.41, 504.2, 512.5, 545.09, 559.82, 615.52, 623.77, 614.61, 620.19]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [521.58, 539.49, 580.91, 540.88, 517.82, 552.05, 516.11, 517.41, 546.72, 557.89, 534.39, 548.13, 529.14, 500.94, 495.76, 503.57, 544.43, 552.33, 539.69, 521.95, 494.95, 454.62, 429.56, 485.39, 476.15, 484.64, 518.58, 482.05, 489.28, 483.36, 469.56, 474.32, 482.93, 483.01, 514.39, 506.0, 484.39, 466.42, 469.46, 473.25, 456.75, 479.18, 480.93, 476.67, 465.58, 470.72, 459.61, 457.06, 456.16, 477.57, 505.74, 521.1, 503.6, 516.13, 493.41, 504.2, 512.5, 545.09, 559.82, 615.52, 623.77, 614.61, 620.19]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [205.37, 220.27, 203.77, 201.99, 196.04, 203.43, 210.21, 217.5, 220.18, 221.53, 231.82, 236.64, 245.04, 246.83, 255.07, 258.12, 278.26, 278.39, 274.95, 284.49, 303.46, 305.33, 347.81, 334.63, 323.21, 337.11, 354.49, 360.54, 341.54, 355.26, 421.39, 408.46, 455.19, 458.79, 448.29, 445.5, 449.7, 424.1, 420.99, 414.05, 447.58, 449.59, 467.51, 503.89, 495.54, 518.09, 516.1, 510.13, 521.54, 542.52, 523.2, 466.38, 490.33, 475.51, 452.4, 488.45, 511.57, 547.26, 507.29, 512.48, 537.37, 551.63, 519.85, 519.74, 532.57, 521.58, 539.49, 580.91, 540.88, 517.82, 552.05, 516.11, 517.41, 546.72, 557.89, 534.39, 548.13, 529.14, 500.94, 495.76, 503.57, 544.43, 552.33, 539.69, 521.95, 494.95, 454.62, 429.56, 485.39, 476.15, 484.64, 518.58, 482.05, 489.28, 483.36, 469.56, 474.32, 482.93, 483.01, 514.39, 506.0, 484.39, 466.42, 469.46, 473.25, 456.75, 479.18, 480.93, 476.67, 465.58, 470.72, 459.61, 457.06, 456.16, 477.57, 505.74, 521.1, 503.6, 516.13, 493.41, 504.2, 512.5, 545.09, 559.82, 615.52, 623.77, 614.61, 620.19]}};
+            var ctx = document.getElementById("chart_AMD").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["AMD"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [480.93, 476.67, 465.58, 470.72, 459.61, 457.06, 456.16, 477.57, 505.74, 521.1, 503.6, 516.13, 493.41, 504.2, 512.5, 545.09, 559.82, 615.52, 623.77, 614.61, 620.19],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">98%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$154.78</span>
+          <div class="range-bar"><div class="range-fill" style="width:98.2%"></div></div>
+          <span class="range-val">High<br>$628.87</span>
+        </div>
+      </div>
+    </div>
+<div class="section-title">🌐 Big Tech</div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">AAPL</span>
+        <span class="change up">▲ +0.02%</span>
+        <span class="sig sig-sell">Sell</span>
+      </div>
+      <div class="sig-reasons">above target -3% · near 52W high</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$336.99</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +0.02%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="down">▼ -0.00%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="down plain">$328.22 (-2.6%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('AAPL','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('AAPL','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('AAPL','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_AAPL" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["AAPL"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [313.45, 314.58, 319.7, 316.85, 325.13, 324.96, 328.21, 319.97, 316.22, 315.34, 326.57, 332.27, 333.08, 331.34, 332.41, 337.0, 336.13, 338.98, 339.75, 337.02, 336.99]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [283.54, 281.5, 289.11, 294.13, 308.36, 312.39, 310.39, 313.12, 315.95, 315.05, 317.04, 314.59, 327.22, 332.97, 333.45, 326.31, 327.46, 325.61, 321.38, 332.73, 336.62, 339.79, 337.9, 333.14, 308.64, 303.16, 309.11, 310.73, 312.14, 313.06, 308.26, 304.91, 302.25, 305.26, 305.93, 305.59, 310.03, 316.83, 311.3, 309.35, 310.34, 309.9, 313.45, 314.58, 319.7, 316.85, 325.13, 324.96, 328.21, 319.97, 316.22, 315.34, 326.57, 332.27, 333.08, 331.34, 332.41, 337.0, 336.13, 338.98, 339.75, 337.02, 336.99]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [251.19, 252.17, 252.44, 248.36, 246.19, 253.34, 255.17, 255.46, 258.4, 253.05, 258.44, 260.03, 260.02, 258.74, 258.37, 265.96, 262.93, 269.75, 272.56, 265.7, 272.68, 272.94, 270.58, 267.13, 270.23, 269.69, 270.87, 279.64, 276.34, 283.67, 287.0, 286.93, 292.8, 292.43, 294.55, 298.61, 297.95, 299.97, 297.58, 298.71, 301.99, 304.73, 308.55, 308.06, 310.58, 312.24, 311.79, 306.05, 314.93, 309.99, 310.96, 307.08, 301.28, 290.3, 291.33, 295.38, 290.88, 296.16, 298.98, 295.69, 297.75, 296.75, 294.05, 292.83, 274.91, 283.54, 281.5, 289.11, 294.13, 308.36, 312.39, 310.39, 313.12, 315.95, 315.05, 317.04, 314.59, 327.22, 332.97, 333.45, 326.31, 327.46, 325.61, 321.38, 332.73, 336.62, 339.79, 337.9, 333.14, 308.64, 303.16, 309.11, 310.73, 312.14, 313.06, 308.26, 304.91, 302.25, 305.26, 305.93, 305.59, 310.03, 316.83, 311.3, 309.35, 310.34, 309.9, 313.45, 314.58, 319.7, 316.85, 325.13, 324.96, 328.21, 319.97, 316.22, 315.34, 326.57, 332.27, 333.08, 331.34, 332.41, 337.0, 336.13, 338.98, 339.75, 337.02, 336.99]}};
+            var ctx = document.getElementById("chart_AAPL").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["AAPL"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [313.45, 314.58, 319.7, 316.85, 325.13, 324.96, 328.21, 319.97, 316.22, 315.34, 326.57, 332.27, 333.08, 331.34, 332.41, 337.0, 336.13, 338.98, 339.75, 337.02, 336.99],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">92%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$243.42</span>
+          <div class="range-bar"><div class="range-fill" style="width:91.8%"></div></div>
+          <span class="range-val">High<br>$345.34</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">MSFT</span>
+        <span class="change down">▼ -0.82%</span>
+        <span class="sig sig-hold">Hold</span>
+      </div>
+      <div class="sig-reasons">analyst upside +16% · high in 52W range</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$495.90</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="down plain">▼ -0.82%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="down">▼ -0.37%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$577.26 (+16.4%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('MSFT','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('MSFT','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('MSFT','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_MSFT" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["MSFT"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [496.37, 505.06, 513.53, 507.29, 501.02, 496.82, 510.12, 499.7, 493.95, 491.65, 492.44, 495.63, 505.41, 497.12, 490.3, 497.75, 493.78, 501.61, 498.0, 500.59, 495.85]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [372.27, 367.88, 372.32, 383.56, 389.76, 386.01, 388.11, 382.62, 383.64, 384.38, 390.26, 384.21, 394.89, 400.35, 393.08, 401.53, 397.0, 389.61, 380.86, 380.98, 388.37, 392.61, 389.81, 450.25, 463.85, 486.73, 491.88, 486.54, 498.92, 499.05, 505.11, 502.86, 491.5, 495.95, 494.47, 479.45, 480.73, 483.4, 481.15, 483.24, 487.31, 491.71, 496.37, 505.06, 513.53, 507.29, 501.02, 496.82, 510.12, 499.7, 493.95, 491.65, 492.44, 495.63, 505.41, 497.12, 490.3, 497.75, 493.78, 501.61, 498.0, 500.59, 495.85]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [371.24, 369.54, 364.49, 355.33, 357.51, 368.68, 367.88, 371.95, 371.38, 370.79, 372.82, 371.56, 369.37, 382.82, 391.52, 409.56, 418.56, 421.08, 416.38, 422.45, 431.17, 414.07, 422.91, 423.11, 427.52, 422.75, 406.13, 412.77, 411.95, 409.72, 412.29, 419.07, 413.44, 410.99, 406.12, 403.57, 407.78, 420.22, 421.83, 415.74, 419.36, 418.3, 417.78, 415.25, 411.89, 426.19, 449.39, 459.65, 440.48, 426.54, 427.25, 415.89, 410.97, 402.65, 396.61, 389.61, 390.01, 399.01, 393.09, 378.2, 378.69, 366.65, 373.24, 364.77, 352.17, 372.27, 367.88, 372.32, 383.56, 389.76, 386.01, 388.11, 382.62, 383.64, 384.38, 390.26, 384.21, 394.89, 400.35, 393.08, 401.53, 397.0, 389.61, 380.86, 380.98, 388.37, 392.61, 389.81, 450.25, 463.85, 486.73, 491.88, 486.54, 498.92, 499.05, 505.11, 502.86, 491.5, 495.95, 494.47, 479.45, 480.73, 483.4, 481.15, 483.24, 487.31, 491.71, 496.37, 505.06, 513.53, 507.29, 501.02, 496.82, 510.12, 499.7, 493.95, 491.65, 492.44, 495.63, 505.41, 497.12, 490.3, 497.75, 493.78, 501.61, 498.0, 500.59, 495.85]}};
+            var ctx = document.getElementById("chart_MSFT").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["MSFT"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [496.37, 505.06, 513.53, 507.29, 501.02, 496.82, 510.12, 499.7, 493.95, 491.65, 492.44, 495.63, 505.41, 497.12, 490.3, 497.75, 493.78, 501.61, 498.0, 500.59, 495.85],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">72%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$349.20</span>
+          <div class="range-bar"><div class="range-fill" style="width:71.7%"></div></div>
+          <span class="range-val">High<br>$553.72</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">GOOGL</span>
+        <span class="change up">▲ +0.60%</span>
+        <span class="sig sig-hold">Hold</span>
+      </div>
+      <div class="sig-reasons">analyst upside +26%</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$341.10</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +0.60%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="down">▼ -1.79%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$429.46 (+25.9%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('GOOGL','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('GOOGL','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('GOOGL','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_GOOGL" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["GOOGL"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [341.78, 340.43, 346.37, 339.13, 334.8, 336.9, 342.26, 338.46, 338.36, 330.65, 332.6, 338.5, 349.39, 344.98, 342.87, 347.33, 349.54, 354.97, 351.16, 337.83, 341.1]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [337.17, 353.42, 357.14, 360.98, 359.68, 366.22, 366.79, 361.69, 358.66, 356.95, 352.28, 359.28, 370.68, 354.23, 346.55, 351.76, 346.93, 341.87, 317.49, 319.53, 326.35, 333.5, 336.49, 333.45, 355.9, 373.27, 377.41, 362.2, 357.52, 354.07, 357.29, 343.58, 343.32, 346.14, 345.68, 343.78, 343.98, 344.5, 340.45, 344.6, 347.84, 346.74, 341.78, 340.43, 346.37, 339.13, 334.8, 336.9, 342.26, 338.46, 338.36, 330.65, 332.6, 338.5, 349.39, 344.98, 342.87, 347.33, 349.54, 354.97, 351.16, 337.83, 341.1]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [290.08, 290.57, 280.57, 274.0, 273.16, 287.2, 297.02, 295.4, 299.62, 305.08, 316.93, 318.1, 316.85, 320.91, 332.5, 336.7, 335.6, 341.26, 337.0, 331.88, 338.9, 338.47, 343.97, 349.91, 349.35, 349.51, 384.32, 385.21, 382.78, 387.95, 397.55, 397.5, 400.3, 388.16, 386.87, 402.12, 400.57, 396.29, 396.45, 387.18, 388.43, 387.18, 382.5, 388.4, 388.35, 389.65, 379.87, 375.9, 361.4, 358.55, 371.73, 368.07, 363.08, 364.03, 356.15, 357.54, 359.45, 369.11, 373.01, 363.56, 367.79, 349.46, 345.91, 345.07, 343.49, 337.17, 353.42, 357.14, 360.98, 359.68, 366.22, 366.79, 361.69, 358.66, 356.95, 352.28, 359.28, 370.68, 354.23, 346.55, 351.76, 346.93, 341.87, 317.49, 319.53, 326.35, 333.5, 336.49, 333.45, 355.9, 373.27, 377.41, 362.2, 357.52, 354.07, 357.29, 343.58, 343.32, 346.14, 345.68, 343.78, 343.98, 344.5, 340.45, 344.6, 347.84, 346.74, 341.78, 340.43, 346.37, 339.13, 334.8, 336.9, 342.26, 338.46, 338.36, 330.65, 332.6, 338.5, 349.39, 344.98, 342.87, 347.33, 349.54, 354.97, 351.16, 337.83, 341.1]}};
+            var ctx = document.getElementById("chart_GOOGL").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["GOOGL"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [341.78, 340.43, 346.37, 339.13, 334.8, 336.9, 342.26, 338.46, 338.36, 330.65, 332.6, 338.5, 349.39, 344.98, 342.87, 347.33, 349.54, 354.97, 351.16, 337.83, 341.1],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">61%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$235.84</span>
+          <div class="range-bar"><div class="range-fill" style="width:60.9%"></div></div>
+          <span class="range-val">High<br>$408.61</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">AMZN</span>
+        <span class="change up">▲ +0.46%</span>
+        <span class="sig sig-buy">Buy</span>
+      </div>
+      <div class="sig-reasons">analyst upside +32% · RSI low 39</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$248.98</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +0.46%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="down">▼ -0.88%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$329.54 (+32.4%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('AMZN','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('AMZN','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('AMZN','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_AMZN" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["AMZN"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [260.28, 256.26, 266.43, 259.77, 254.92, 254.98, 258.9, 258.51, 256.97, 252.4, 251.89, 256.78, 253.54, 248.42, 245.96, 251.19, 253.71, 258.45, 254.98, 249.27, 248.99]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [232.69, 240.14, 238.34, 241.7, 242.67, 244.16, 245.98, 243.62, 247.04, 245.34, 247.31, 247.49, 254.96, 249.89, 247.23, 249.99, 247.55, 244.85, 233.66, 232.11, 231.39, 230.86, 226.65, 235.5, 271.58, 284.02, 277.42, 272.65, 272.26, 274.48, 278.09, 272.27, 267.28, 265.13, 262.65, 261.31, 259.45, 265.84, 260.11, 258.63, 262.07, 261.06, 260.28, 256.26, 266.43, 259.77, 254.92, 254.98, 258.9, 258.51, 256.97, 252.4, 251.89, 256.78, 253.54, 248.42, 245.96, 251.19, 253.71, 258.45, 254.98, 249.27, 248.99]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [207.24, 211.71, 207.54, 199.34, 200.95, 208.27, 210.57, 209.77, 212.79, 213.77, 221.25, 233.65, 238.38, 239.89, 249.02, 248.5, 249.7, 250.56, 248.28, 249.91, 255.36, 255.08, 263.99, 261.12, 259.7, 263.04, 265.06, 268.26, 272.05, 273.55, 274.99, 271.17, 272.68, 268.99, 265.82, 270.13, 267.22, 264.14, 264.86, 259.34, 265.01, 268.46, 266.32, 265.29, 271.85, 274.0, 270.64, 261.26, 256.52, 250.02, 253.79, 246.03, 245.22, 244.19, 238.0, 241.51, 238.55, 246.02, 246.0, 237.5, 244.39, 232.79, 234.11, 234.27, 227.01, 232.69, 240.14, 238.34, 241.7, 242.67, 244.16, 245.98, 243.62, 247.04, 245.34, 247.31, 247.49, 254.96, 249.89, 247.23, 249.99, 247.55, 244.85, 233.66, 232.11, 231.39, 230.86, 226.65, 235.5, 271.58, 284.02, 277.42, 272.65, 272.26, 274.48, 278.09, 272.27, 267.28, 265.13, 262.65, 261.31, 259.45, 265.84, 260.11, 258.63, 262.07, 261.06, 260.28, 256.26, 266.43, 259.77, 254.92, 254.98, 258.9, 258.51, 256.97, 252.4, 251.89, 256.78, 253.54, 248.42, 245.96, 251.19, 253.71, 258.45, 254.98, 249.27, 248.99]}};
+            var ctx = document.getElementById("chart_AMZN").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["AMZN"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [260.28, 256.26, 266.43, 259.77, 254.92, 254.98, 258.9, 258.51, 256.97, 252.4, 251.89, 256.78, 253.54, 248.42, 245.96, 251.19, 253.71, 258.45, 254.98, 249.27, 248.99],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">58%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$196.00</span>
+          <div class="range-bar"><div class="range-fill" style="width:58.1%"></div></div>
+          <span class="range-val">High<br>$287.20</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">META</span>
+        <span class="change up">▲ +4.84%</span>
+        <span class="sig sig-strong-sell">Strong Sell</span>
+      </div>
+      <div class="sig-reasons">near 52W high · RSI overbought 85 · far above MA50</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$769.50</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="up plain">▲ +4.84%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +12.87%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$770.21 (+0.1%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('META','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('META','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('META','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_META" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["META"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [575.69, 570.65, 577.56, 571.89, 578.08, 592.38, 610.2, 616.28, 613.0, 653.17, 643.87, 647.52, 665.08, 669.71, 672.78, 681.77, 665.23, 741.25, 736.6, 744.1, 769.5]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [549.82, 562.16, 562.85, 612.43, 582.44, 599.82, 615.09, 602.64, 630.98, 668.68, 656.21, 660.52, 680.77, 664.02, 645.5, 645.34, 643.3, 626.68, 605.62, 594.72, 593.4, 592.94, 585.15, 538.6, 556.27, 589.77, 587.48, 588.31, 589.43, 591.63, 594.45, 598.65, 578.39, 594.5, 589.38, 568.52, 543.24, 545.6, 545.4, 549.47, 558.58, 569.6, 575.69, 570.65, 577.56, 571.89, 578.08, 592.38, 610.2, 616.28, 613.0, 653.17, 643.87, 647.52, 665.08, 669.71, 672.78, 681.77, 665.23, 741.25, 736.6, 744.1, 769.5]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [591.9, 593.87, 546.6, 524.82, 535.46, 571.15, 578.24, 573.48, 572.04, 574.06, 611.37, 627.31, 628.78, 633.44, 661.35, 670.43, 675.71, 687.37, 669.76, 667.69, 673.56, 658.02, 673.87, 677.46, 670.19, 667.97, 610.86, 607.71, 609.36, 603.92, 611.83, 615.75, 608.59, 597.83, 601.97, 615.57, 617.37, 613.18, 610.16, 601.58, 604.02, 606.34, 609.21, 611.29, 634.17, 634.2, 631.43, 599.44, 596.61, 621.91, 626.49, 591.98, 584.39, 583.59, 570.0, 567.46, 566.01, 593.01, 599.74, 567.13, 576.76, 563.41, 561.76, 557.23, 542.44, 549.82, 562.16, 562.85, 612.43, 582.44, 599.82, 615.09, 602.64, 630.98, 668.68, 656.21, 660.52, 680.77, 664.02, 645.5, 645.34, 643.3, 626.68, 605.62, 594.72, 593.4, 592.94, 585.15, 538.6, 556.27, 589.77, 587.48, 588.31, 589.43, 591.63, 594.45, 598.65, 578.39, 594.5, 589.38, 568.52, 543.24, 545.6, 545.4, 549.47, 558.58, 569.6, 575.69, 570.65, 577.56, 571.89, 578.08, 592.38, 610.2, 616.28, 613.0, 653.17, 643.87, 647.52, 665.08, 669.71, 672.78, 681.77, 665.23, 741.25, 736.6, 744.1, 769.5]}};
+            var ctx = document.getElementById("chart_META").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["META"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [575.69, 570.65, 577.56, 571.89, 578.08, 592.38, 610.2, 616.28, 613.0, 653.17, 643.87, 647.52, 665.08, 669.71, 672.78, 681.77, 665.23, 741.25, 736.6, 744.1, 769.5],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">98%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$520.26</span>
+          <div class="range-bar"><div class="range-fill" style="width:98.1%"></div></div>
+          <span class="range-val">High<br>$774.25</span>
+        </div>
+      </div>
+    </div>
+<div class="card">
+      <div class="card-header">
+        <span class="ticker">TSLA</span>
+        <span class="change down">▼ -0.02%</span>
+        <span class="sig sig-hold">Hold</span>
+      </div>
+      <div class="sig-reasons">far above MA50</div>
+      
+      <div class="metrics-grid">
+        <div class="metric" ><span class="metric-label">Price (USD)</span><span class="metric-value"><span class="price-val">$380.05</span></span></div>
+        <div class="metric" title="Change vs previous close"><span class="metric-label">Day Change</span><span class="metric-value"><span class="down plain">▼ -0.02%</span></span></div>
+        <div class="metric" title="Change over the past 5 trading days"><span class="metric-label">1-Week Change</span><span class="metric-value"><span class="up">▲ +3.78%</span></span></div>
+        <div class="metric" title="Wall Street consensus mean price target"><span class="metric-label">Analyst Target</span><span class="metric-value"><span class="up plain">$396.94 (+4.4%)</span></span></div>
+      </div>
+      
+      <div class="chart-section">
+        <div class="chart-header">
+          <span class="chart-label">Price History</span>
+          <div class="chart-btns">
+            <button class="cbtn active" onclick="setPeriod('TSLA','1mo',this)">1M</button>
+            <button class="cbtn" onclick="setPeriod('TSLA','3mo',this)">3M</button>
+            <button class="cbtn" onclick="setPeriod('TSLA','6mo',this)">6M</button>
+          </div>
+        </div>
+        <canvas id="chart_TSLA" height="80"></canvas>
+        <script>
+          (function() {
+            window._sd = window._sd || {};
+            window._sd["TSLA"] = {"1mo": {"dates": ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [345.82, 354.81, 348.75, 367.95, 356.09, 357.01, 376.37, 354.08, 368.16, 367.81, 363.56, 365.44, 358.97, 356.58, 358.08, 366.2, 364.27, 375.3, 378.9, 380.12, 380.05]}, "3mo": {"dates": ["Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [379.71, 411.84, 420.6, 425.3, 393.45, 419.77, 402.9, 394.06, 406.55, 407.76, 394.76, 396.18, 394.46, 391.06, 380.84, 369.57, 378.93, 374.01, 319.69, 313.03, 309.22, 307.44, 298.32, 308.85, 311.21, 322.08, 327.35, 321.55, 319.53, 328.58, 330.88, 332.81, 327.51, 339.96, 342.27, 339.3, 336.87, 351.12, 345.13, 362.86, 348.95, 350.25, 345.82, 354.81, 348.75, 367.95, 356.09, 357.01, 376.37, 354.08, 368.16, 367.81, 363.56, 365.44, 358.97, 356.58, 358.08, 366.2, 364.27, 375.3, 378.9, 380.12, 380.05]}, "6mo": {"dates": ["Mar 24", "Mar 25", "Mar 26", "Mar 27", "Mar 30", "Mar 31", "Apr 01", "Apr 02", "Apr 06", "Apr 07", "Apr 08", "Apr 09", "Apr 10", "Apr 13", "Apr 14", "Apr 15", "Apr 16", "Apr 17", "Apr 20", "Apr 21", "Apr 22", "Apr 23", "Apr 24", "Apr 27", "Apr 28", "Apr 29", "Apr 30", "May 01", "May 04", "May 05", "May 06", "May 07", "May 08", "May 11", "May 12", "May 13", "May 14", "May 15", "May 18", "May 19", "May 20", "May 21", "May 22", "May 26", "May 27", "May 28", "May 29", "Jun 01", "Jun 02", "Jun 03", "Jun 04", "Jun 05", "Jun 08", "Jun 09", "Jun 10", "Jun 11", "Jun 12", "Jun 15", "Jun 16", "Jun 17", "Jun 18", "Jun 22", "Jun 23", "Jun 24", "Jun 25", "Jun 26", "Jun 29", "Jun 30", "Jul 01", "Jul 02", "Jul 06", "Jul 07", "Jul 08", "Jul 09", "Jul 10", "Jul 13", "Jul 14", "Jul 15", "Jul 16", "Jul 17", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 27", "Jul 28", "Jul 29", "Jul 30", "Jul 31", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21", "Aug 24", "Aug 25", "Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"], "prices": [383.03, 385.95, 372.11, 361.83, 355.28, 371.75, 381.26, 360.59, 352.82, 346.65, 343.25, 345.62, 348.95, 352.42, 364.2, 391.95, 388.9, 400.62, 392.5, 386.42, 387.51, 373.72, 376.3, 378.67, 376.02, 372.8, 381.63, 390.82, 392.51, 389.37, 398.73, 411.79, 428.35, 445.0, 433.45, 445.27, 443.3, 422.24, 409.99, 404.11, 417.26, 417.85, 426.01, 433.59, 440.36, 442.1, 435.79, 415.88, 423.74, 423.7, 418.45, 391.0, 408.95, 396.68, 381.59, 399.15, 406.43, 411.15, 404.66, 396.38, 400.49, 405.05, 381.61, 375.53, 375.12, 379.71, 411.84, 420.6, 425.3, 393.45, 419.77, 402.9, 394.06, 406.55, 407.76, 394.76, 396.18, 394.46, 391.06, 380.84, 369.57, 378.93, 374.01, 319.69, 313.03, 309.22, 307.44, 298.32, 308.85, 311.21, 322.08, 327.35, 321.55, 319.53, 328.58, 330.88, 332.81, 327.51, 339.96, 342.27, 339.3, 336.87, 351.12, 345.13, 362.86, 348.95, 350.25, 345.82, 354.81, 348.75, 367.95, 356.09, 357.01, 376.37, 354.08, 368.16, 367.81, 363.56, 365.44, 358.97, 356.58, 358.08, 366.2, 364.27, 375.3, 378.9, 380.12, 380.05]}};
+            var ctx = document.getElementById("chart_TSLA").getContext("2d");
+            window._charts = window._charts || {};
+            window._charts["TSLA"] = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: ["Aug 26", "Aug 27", "Aug 28", "Aug 31", "Sep 01", "Sep 02", "Sep 03", "Sep 04", "Sep 08", "Sep 09", "Sep 10", "Sep 11", "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 21", "Sep 22", "Sep 23", "Sep 24"],
+                datasets: [{
+                  data: [345.82, 354.81, 348.75, 367.95, 356.09, 357.01, 376.37, 354.08, 368.16, 367.81, 363.56, 365.44, 358.97, 356.58, 358.08, 366.2, 364.27, 375.3, 378.9, 380.12, 380.05],
+                  borderColor: "#475569",
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0.3,
+                  fill: true,
+                  backgroundColor: "#47556920"
+                }]
+              },
+              options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: {
+                  callbacks: { label: c => "$" + c.parsed.y.toFixed(2) }
+                } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { maxTicksLimit: 5, color: "#475569", font: { size: 9 } } },
+                  y: { grid: { color: "#1a2236" }, ticks: { color: "#475569", font: { size: 9 },
+                         callback: v => "$" + v } }
+                }
+              }
+            });
+          })();
+        </script>
+      </div>
+      
+      <div class="range-section">
+        <div class="range-label-row">
+          <span class="range-label-text">52-Week Range <span class="range-hint">(where current price sits)</span></span>
+          <span class="range-pct">41%</span>
+        </div>
+        <div class="range-wrap">
+          <span class="range-val">Low<br>$297.38</span>
+          <div class="range-bar"><div class="range-fill" style="width:41.0%"></div></div>
+          <span class="range-val">High<br>$498.83</span>
+        </div>
+      </div>
+    </div>
+
+  <div class="section-title">📰 Top Headlines</div>
+  <ul class="news-list"><li><span class="news-ticker">[NVDA]</span> <a href="https://finance.yahoo.com/video/nvidias-valuation-falling-might-not-140207364.html" target="_blank">Nvidia's valuation is falling, but it might not be a warning sign</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[NVDA]</span> <a href="https://finance.yahoo.com/markets/stocks/articles/super-micro-stock-slips-nvidia-174602638.html" target="_blank">Super Micro Stock Slips as New NVIDIA AI Systems Enter the Market</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[MU]</span> <a href="https://www.fool.com/investing/2026/09/24/im-buying-more-nvidia-stock-right-now-heres-why/" target="_blank">I'm Buying More Nvidia Stock Right Now. Here's Why.</a><span class="publisher"> — Motley Fool</span></li><li><span class="news-ticker">[MU]</span> <a href="https://www.fool.com/investing/2026/09/24/micron-stock-gets-a-big-wall-street-boost-ahead-of-earnings/" target="_blank">Micron Stock Gets a Big Wall Street Boost Ahead of Earnings</a><span class="publisher"> — Motley Fool</span></li><li><span class="news-ticker">[INTC]</span> <a href="https://finance.yahoo.com/video/qualcomm-targeting-agentic-ai-2-195058732.html" target="_blank">How Qualcomm is targeting agentic AI with its 2 new smartphone chips</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[INTC]</span> <a href="https://finance.yahoo.com/technology/ai/articles/intel-shares-rise-agentic-ai-173452687.html" target="_blank">Intel Shares Rise as Agentic AI Keeps CPUs in the Loop</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[AMD]</span> <a href="https://finance.yahoo.com/technology/ai/articles/arm-drops-3-3-more-173604154.html" target="_blank">Arm Drops 3.3% as More AI Cores Test Royalty Economics</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[AAPL]</span> <a href="https://finance.yahoo.com/video/8-30-stories-driving-markets-143259210.html" target="_blank">The 8:30: The stories driving markets September 24</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://finance.yahoo.com/markets/article/nvidia-leads-tech-stocks-lower-as-treasury-yields-surge-alphacheck-133744347.html" target="_blank">Nvidia leads tech stocks lower as Treasury yields surge: AlphaCheck</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[MSFT]</span> <a href="https://finance.yahoo.com/technology/ai/articles/deepseek-sends-strong-signal-ahead-172038380.html" target="_blank">DeepSeek Sends Strong Signal Ahead of Funding Push</a><span class="publisher"> — GuruFocus.com</span></li><li><span class="news-ticker">[GOOGL]</span> <a href="https://finance.yahoo.com/video/this-is-humanitys-last-decision-203051821.html" target="_blank">This is Humanity's Last Decision</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[GOOGL]</span> <a href="https://finance.yahoo.com/video/metas-muse-total-game-changer-192805011.html" target="_blank">How Meta's Muse was a total game changer for the AI narrative</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[AMZN]</span> <a href="https://moneylion.com/trending/money/jeff-bezos-billions-split-among-democrats" target="_blank">What Would Happen if Jeff Bezos' Billions Were Split Among All Democrats?</a><span class="publisher"> — MoneyLion</span></li><li><span class="news-ticker">[META]</span> <a href="https://finance.yahoo.com/video/muse-expanding-metas-moat-consumer-172500840.html" target="_blank">Muse is expanding Meta's moat, consumer exposure to tech products</a><span class="publisher"> — Yahoo Finance Video</span></li><li><span class="news-ticker">[META]</span> <a href="https://finance.yahoo.com/markets/stocks/article/heres-what-wall-street-thinks-of-metas-new-smartglass-lineup-and-first-muse-holdable-085705955.html" target="_blank">Here's what Wall Street thinks of Meta's new smartglass lineup and first Muse 'holdable'</a><span class="publisher"> — Yahoo Finance</span></li><li><span class="news-ticker">[TSLA]</span> <a href="https://stocktwits.com/news-articles/markets/equity/ford-set-to-lose-ground-to-hyundai-in-q3-sales-says-cox-automotive-detroit-3-market-share-seen-hitting-record-low/cZMJ70yRB9F" target="_blank">Ford Set To Lose Ground To Hyundai In Q3 Sales, Says Cox Automotive — ‘Detroit 3’ Market Share Seen Hitting Record Low</a><span class="publisher"> — Stocktwits</span></li><li><span class="news-ticker">[TSLA]</span> <a href="https://www.benzinga.com/markets/prediction-markets/26/09/61978817/tesla-fsd-brussels-speed-limit-eu-vote?utm_source=yahooFinance&utm_campaign=partner_feed&utm_medium=referral" target="_blank">Tesla FSD Drove Over the Limit in 55% of Brussels Tests Ahead of EU Approval Vote</a><span class="publisher"> — Benzinga Prediction Markets</span></li></ul>
+  <p class="disclaimer">⚠️ Analyst targets are Wall Street consensus estimates via Yahoo Finance. Not investment advice.</p>
+  <script>
+    function setPeriod(tid, period, btn) {
+      var c = window._charts[tid]; var d = window._sd[tid][period];
+      c.data.labels = d.dates; c.data.datasets[0].data = d.prices; c.update();
+      btn.closest('.chart-btns').querySelectorAll('.cbtn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>
