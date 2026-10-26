@@ -5,7 +5,7 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import yfinance as yf
 
-with open("config.json") as f:
+with open("config.json", encoding="utf-8") as f:
     config = json.load(f)
 
 SECTORS = config["sectors"]
@@ -107,6 +107,18 @@ for ticker in tickers:
             "chart_data": {"1mo": {"dates": [], "prices": []}, "3mo": {"dates": [], "prices": []}, "6mo": {"dates": [], "prices": []}},
         })
 
+# ── Market indices ───────────────────────────────────────────
+INDEX_MAP = {"SPY": "S&P 500", "QQQ": "NASDAQ 100", "DIA": "Dow Jones"}
+indices = []
+for sym, lbl in INDEX_MAP.items():
+    try:
+        it = yf.Ticker(sym)
+        ip = it.fast_info.last_price
+        iv = it.fast_info.previous_close
+        indices.append({"ticker": sym, "label": lbl, "price": ip, "pct": (ip - iv) / iv * 100})
+    except Exception:
+        indices.append({"ticker": sym, "label": lbl, "price": None, "pct": None})
+
 # ── Universe bulk fetch (for ranked lists) ───────────────────
 extra_tickers = [t for t in universe if t not in set(tickers)]
 universe_stocks = []
@@ -203,7 +215,7 @@ for title, items in [("Whole Market — Top Gainers", market_gainers),
                         + (f" | ${s['trade_amount']/1e9:.2f}B traded" if s["trade_amount"] else ""))
 
 md_path = os.path.join(report_dir, f"{today}.md")
-with open(md_path, "w") as f:
+with open(md_path, "w", encoding="utf-8") as f:
     f.write("\n".join(md_lines) + "\n")
 
 # ── HTML helpers ────────────────────────────────────────────
@@ -414,12 +426,30 @@ up_count = sum(1 for s in valid if s["pct"] >= 0)
 down_count = len(valid) - up_count
 best = max(valid, key=lambda s: s["pct"])
 worst = min(valid, key=lambda s: s["pct"])
-summary_html = f'''<div class="summary">
-  <div class="summary-item"><span class="up">▲ {up_count} Up</span></div>
-  <div class="summary-item"><span class="down">▼ {down_count} Down</span></div>
-  <div class="summary-divider"></div>
-  <div class="summary-item"><span class="summary-label">Best</span> <span class="up">{best["ticker"]} {best["pct"]:+.2f}%</span></div>
-  <div class="summary-item"><span class="summary-label">Worst</span> <span class="down">{worst["ticker"]} {worst["pct"]:+.2f}%</span></div>
+
+def _idx_card(idx):
+    if idx["price"] is None:
+        return f'<div class="index-item"><span class="index-name">{idx["label"]}</span><span class="neutral">—</span></div>'
+    cls = "up" if idx["pct"] >= 0 else "down"
+    arrow = "▲" if idx["pct"] >= 0 else "▼"
+    return f'''<div class="index-item">
+      <span class="index-name">{idx["label"]}</span>
+      <span class="index-price">${idx["price"]:.2f}</span>
+      <span class="index-chg {cls} plain">{arrow} {idx["pct"]:+.2f}%</span>
+    </div>'''
+
+indices_html = "".join(_idx_card(i) for i in indices)
+market_overview_html = f'''<div class="market-overview">
+  <div class="overview-title">Market Indices</div>
+  <div class="indices-row">{indices_html}</div>
+  <div class="breadth-row">
+    <span class="breadth-pill up-pill">▲ {up_count} Up</span>
+    <span class="breadth-pill down-pill">▼ {down_count} Down</span>
+    <span class="breadth-divider"></span>
+    <span class="breadth-label">Best</span>&nbsp;<span class="up plain">{best["ticker"]} {best["pct"]:+.2f}%</span>
+    <span class="breadth-sep">·</span>
+    <span class="breadth-label">Worst</span>&nbsp;<span class="down plain">{worst["ticker"]} {worst["pct"]:+.2f}%</span>
+  </div>
 </div>'''
 
 # ── Signals overview ─────────────────────────────────────────
@@ -555,12 +585,24 @@ html = f"""<!DOCTYPE html>
          background: #0f1117; color: #e2e8f0; padding: 16px; max-width: 560px; margin: 0 auto; }}
   h1 {{ font-size: 1.3rem; font-weight: 700; color: #f8fafc; }}
   .date {{ font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }}
-  .summary {{ display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-              background: #1e2330; border-radius: 10px; padding: 10px 14px;
-              margin-bottom: 20px; font-size: 0.9rem; font-weight: 600; }}
-  .summary-item {{ display: flex; align-items: center; gap: 4px; }}
-  .summary-label {{ color: #64748b; font-weight: 400; font-size: 0.8rem; }}
-  .summary-divider {{ width: 1px; height: 16px; background: #475569; }}
+  .market-overview {{ background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }}
+  .overview-title {{ font-size: 0.68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+                     color: #64748b; margin-bottom: 10px; }}
+  .indices-row {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }}
+  .index-item {{ background: #0f1117; border-radius: 8px; padding: 10px 12px;
+                 display: flex; flex-direction: column; gap: 3px; }}
+  .index-name {{ font-size: 0.68rem; color: #64748b; text-transform: uppercase;
+                 letter-spacing: .06em; font-weight: 500; }}
+  .index-price {{ font-size: 0.95rem; font-weight: 700; color: #f1f5f9; }}
+  .index-chg {{ font-size: 0.82rem; font-weight: 600; }}
+  .breadth-row {{ display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+                  font-size: 0.88rem; border-top: 1px solid #2d3748; padding-top: 10px; }}
+  .breadth-pill {{ font-size: 0.8rem; font-weight: 700; padding: 3px 10px; border-radius: 5px; }}
+  .up-pill {{ background: #14532d33; color: #4ade80; }}
+  .down-pill {{ background: #7f1d1d33; color: #f87171; }}
+  .breadth-divider {{ width: 1px; height: 14px; background: #475569; }}
+  .breadth-label {{ color: #64748b; font-size: 0.8rem; }}
+  .breadth-sep {{ color: #334155; }}
   .section-title {{ font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
                     text-transform: uppercase; color: #64748b; margin: 20px 0 10px; }}
   .card {{ background: #1e2330; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }}
@@ -643,7 +685,7 @@ html = f"""<!DOCTYPE html>
 <body>
   <h1>📊 {report_label}</h1>
   <div class="date">{date_str}</div>
-  {summary_html}
+  {market_overview_html}
   {signals_html}
   {dynamic_lists_html}
   {market_html}
@@ -663,7 +705,7 @@ html = f"""<!DOCTYPE html>
 </html>"""
 
 html_path = os.path.join(report_dir, f"{today}.html")
-with open(html_path, "w") as f:
+with open(html_path, "w", encoding="utf-8") as f:
     f.write(html)
 
 index = f"""<!DOCTYPE html>
@@ -671,7 +713,7 @@ index = f"""<!DOCTYPE html>
 <title>Redirecting...</title></head>
 <body>Redirecting to <a href="daily-reports/{today}.html">today's report</a>.</body></html>"""
 
-with open("index.html", "w") as f:
+with open("index.html", "w", encoding="utf-8") as f:
     f.write(index)
 
 print(f"Reports saved: {md_path}, {html_path}")
