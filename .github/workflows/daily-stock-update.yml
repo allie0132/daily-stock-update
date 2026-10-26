@@ -5,6 +5,9 @@ on:
     - cron: '30 13 * * 1-5'   # Market open  9:30am ET
     - cron: '5 20 * * 1-5'    # Market close 4:05pm ET
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['run-now.txt']   # edit this file to trigger an on-demand report
 
 jobs:
   update:

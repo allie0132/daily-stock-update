@@ -1,0 +1,2 @@
+On-demand report trigger. Updating this file runs the Daily Stock Update workflow.
+Last requested: 2026-10-26T15:46Z
