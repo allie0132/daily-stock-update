@@ -151,7 +151,7 @@ if extra_tickers:
 # ── Whole-market movers (Yahoo predefined screeners) ─────────
 # Not limited to config tickers: Yahoo screens all US stocks
 # (its predefined screens already exclude tiny/penny caps).
-MARKET_N = int(config.get("market_movers_count", 10))
+MARKET_N = int(config.get("market_movers_count", 5))
 
 def fetch_screen(name, count):
     """Run a Yahoo predefined screener; tolerate yfinance API differences."""
@@ -524,29 +524,35 @@ dynamic_lists_html = (
 # ── Whole-market movers block ────────────────────────────────
 watch_set = set(tickers)
 
-def mkt_ticker_cell(s):
-    star = ' <span class="mkt-star" title="In your watchlist">★</span>' if s["ticker"] in watch_set else ""
-    name = (s["name"][:22] + "…") if len(s["name"]) > 23 else s["name"]
-    return f'<span class="tt-ticker">{s["ticker"]}</span>{star}<div class="mkt-name">{name}</div>'
+def mkt_col(title, items, detail_fn):
+    if not items:
+        return f'<div class="mkt-col"><div class="mkt-col-title">{title}</div><div class="mkt-empty">—</div></div>'
+    rows = ""
+    for s in items:
+        star = '<span class="mkt-star">★</span> ' if s["ticker"] in watch_set else ""
+        name = (s["name"][:14] + "…") if len(s["name"]) > 15 else s["name"]
+        detail = detail_fn(s)
+        pct_cls = "up" if s["pct"] >= 0 else "down"
+        rows += (
+            f'<div class="mkt-row">'
+            f'<div class="mkt-info"><span class="mkt-tkr">{star}{s["ticker"]}</span>'
+            f'<span class="mkt-nm">{name}</span></div>'
+            f'<div class="mkt-right"><span class="mkt-det">{detail}</span>'
+            f'<span class="mkt-pct {pct_cls}">{s["pct"]:+.1f}%</span></div></div>'
+        )
+    return f'<div class="mkt-col"><div class="mkt-col-title">{title}</div>{rows}</div>'
 
-def mkt_table(title, items, middle_fn):
-    if not items: return ""
-    rows = "".join(
-        f'<tr><td class="mkt-rank">{i}</td><td>{mkt_ticker_cell(s)}</td>'
-        f'<td class="mkt-mid">{middle_fn(s)}</td><td class="mkt-pct">{pct_cell(s["pct"])}</td></tr>'
-        for i, s in enumerate(items, 1))
-    return f'<div class="mkt-sub">{title}</div><table class="tt-table">{rows}</table>'
-
-market_tables = (
-    mkt_table("📈 Top Gainers", market_gainers, lambda s: f'<span class="tt-price">${s["price"]:.2f}</span>') +
-    mkt_table("💰 Most Traded ($ volume)", market_traded, lambda s: f'<span class="tt-amt">{fmt_amount(s["trade_amount"])}</span>') +
-    mkt_table("📉 Top Losers", market_losers, lambda s: f'<span class="tt-price">${s["price"]:.2f}</span>')
+market_cols = (
+    mkt_col("📈 Gainers", market_gainers, lambda s: f'${s["price"]:.0f}') +
+    mkt_col("💰 Traded", market_traded, lambda s: fmt_amount(s["trade_amount"])) +
+    mkt_col("📉 Losers", market_losers, lambda s: f'${s["price"]:.0f}')
 )
 market_html = (
-    '<div class="section-title">🌎 Whole Market Movers</div>'
-    f'<div class="card"><div class="mkt-note">All US stocks, not just your list · ★ = on your watchlist</div>{market_tables}</div>'
-    if market_tables else
-    '<div class="section-title">🌎 Whole Market Movers</div><div class="card"><span class="neutral">Market screener data unavailable this run.</span></div>'
+    '<div class="section-title">🌎 Market Movers</div>'
+    f'<div class="card"><div class="mkt-note">All US stocks · ★ = in your list</div>'
+    f'<div class="mkt-grid">{market_cols}</div></div>'
+    if market_cols else
+    '<div class="section-title">🌎 Market Movers</div><div class="card"><span class="neutral">Market screener data unavailable.</span></div>'
 )
 
 # ── Sector groups ─────────────────────────────────────────────
@@ -669,15 +675,25 @@ html = f"""<!DOCTYPE html>
   .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
   .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
   .tt-price {{ color: #94a3b8; width: 80px; }}
-  .mkt-note {{ font-size: 0.72rem; color: #64748b; margin-bottom: 6px; }}
-  .mkt-sub {{ font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;
-              letter-spacing: .06em; margin: 14px 0 4px; }}
-  .mkt-sub:first-of-type {{ margin-top: 4px; }}
-  .mkt-rank {{ color: #475569; font-size: 0.75rem; width: 22px; }}
-  .mkt-name {{ font-size: 0.7rem; color: #64748b; font-weight: 400; }}
-  .mkt-star {{ color: #fbbf24; font-size: 0.75rem; }}
-  .mkt-mid {{ text-align: right; }}
-  .mkt-pct {{ text-align: right; white-space: nowrap; }}
+  .mkt-note {{ font-size: 0.68rem; color: #64748b; margin-bottom: 8px; }}
+  .mkt-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }}
+  .mkt-col {{ min-width: 0; }}
+  .mkt-col-title {{ font-size: 0.62rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;
+                    letter-spacing: .06em; margin-bottom: 6px; padding-bottom: 4px;
+                    border-bottom: 1px solid #2d3748; }}
+  .mkt-row {{ display: flex; justify-content: space-between; align-items: flex-start;
+              padding: 4px 0; border-bottom: 1px solid #0f1117; gap: 4px; }}
+  .mkt-row:last-child {{ border-bottom: none; }}
+  .mkt-info {{ display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }}
+  .mkt-tkr {{ font-size: 0.78rem; font-weight: 700; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .mkt-nm {{ font-size: 0.6rem; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .mkt-right {{ display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; }}
+  .mkt-det {{ font-size: 0.65rem; color: #64748b; white-space: nowrap; }}
+  .mkt-pct {{ font-size: 0.75rem; font-weight: 700; white-space: nowrap; }}
+  .mkt-pct.up {{ color: #4ade80; }}
+  .mkt-pct.down {{ color: #f87171; }}
+  .mkt-star {{ color: #fbbf24; font-size: 0.65rem; }}
+  .mkt-empty {{ font-size: 0.75rem; color: #475569; padding: 8px 0; }}
   .disclaimer {{ margin-top: 20px; font-size: 0.73rem; color: #475569;
                  border-top: 1px solid #1e2330; padding-top: 12px; }}
 </style>
@@ -686,9 +702,9 @@ html = f"""<!DOCTYPE html>
   <h1>📊 {report_label}</h1>
   <div class="date">{date_str}</div>
   {market_overview_html}
+  {market_html}
   {signals_html}
   {dynamic_lists_html}
-  {market_html}
   {sector_html}
   <div class="section-title">📰 Top Headlines</div>
   <ul class="news-list">{news_items}</ul>
