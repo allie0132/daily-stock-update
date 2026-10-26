@@ -563,11 +563,8 @@ for sector_name, sector_tickers in SECTORS.items():
     cards = "\n".join(card_html(s) for s in sector_stocks)
     sector_html += f'<div class="section-title">{sector_name}</div>\n{cards}\n'
 
-# Tickers not in any sector
-sectored = {t for ts in SECTORS.values() for t in ts}
-others = [s for s in stocks if s["ticker"] not in sectored]
-if others:
-    cards = "\n".join(card_html(s) for s in others)
+if universe_stocks:
+    cards = "\n".join(card_html(s) for s in universe_stocks)
     sector_html += f'<div class="section-title">📈 Other</div>\n{cards}\n'
 
 # ── News ────────────────────────────────────────────────────
