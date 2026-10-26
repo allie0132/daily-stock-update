@@ -136,6 +136,49 @@ if extra_tickers:
     except Exception as e:
         print(f"Warning: universe bulk fetch failed: {e}")
 
+# ── Whole-market movers (Yahoo predefined screeners) ─────────
+# Not limited to config tickers: Yahoo screens all US stocks
+# (its predefined screens already exclude tiny/penny caps).
+MARKET_N = int(config.get("market_movers_count", 10))
+
+def fetch_screen(name, count):
+    """Run a Yahoo predefined screener; tolerate yfinance API differences."""
+    res = None
+    for kwargs in ({"count": count}, {"size": count}, {}):
+        try:
+            res = yf.screen(name, **kwargs)
+            break
+        except TypeError:
+            continue
+        except Exception as e:
+            print(f"Warning: screener '{name}' failed: {e}")
+            return []
+    if not res:
+        return []
+    rows = []
+    for q in res.get("quotes", []):
+        try:
+            price = q.get("regularMarketPrice")
+            pct = q.get("regularMarketChangePercent")
+            vol = q.get("regularMarketVolume") or 0
+            if price is None or pct is None:
+                continue
+            rows.append({
+                "ticker": q["symbol"],
+                "name": q.get("shortName") or q.get("longName") or "",
+                "price": float(price), "pct": float(pct), "volume": int(vol),
+                "trade_amount": float(price) * vol if vol else None,
+            })
+        except Exception:
+            continue
+    return rows
+
+market_gainers = sorted(fetch_screen("day_gainers", 50), key=lambda s: s["pct"], reverse=True)[:MARKET_N]
+market_losers  = sorted(fetch_screen("day_losers", 50),  key=lambda s: s["pct"])[:MARKET_N]
+market_traded  = sorted([s for s in fetch_screen("most_actives", 100) if s["trade_amount"]],
+                        key=lambda s: s["trade_amount"], reverse=True)[:MARKET_N]
+print(f"Market movers: {len(market_gainers)} gainers, {len(market_traded)} most traded, {len(market_losers)} losers")
+
 # Markdown
 md_lines = [f"# Stock Report — {today}\n"]
 for s in stocks:
@@ -149,6 +192,15 @@ for s in stocks:
         if s["target"]:
             line += f" | Target: ${s['target']:.2f} ({s['upside']:+.1f}%)"
         md_lines.append(line)
+
+for title, items in [("Whole Market — Top Gainers", market_gainers),
+                      ("Whole Market — Most Traded ($ volume)", market_traded),
+                      ("Whole Market — Top Losers", market_losers)]:
+    if not items: continue
+    md_lines.append(f"\n## {title}")
+    for s in items:
+        md_lines.append(f"- **{s['ticker']}** {s['name']}: ${s['price']:.2f} {s['pct']:+.2f}%"
+                        + (f" | ${s['trade_amount']/1e9:.2f}B traded" if s["trade_amount"] else ""))
 
 md_path = os.path.join(report_dir, f"{today}.md")
 with open(md_path, "w") as f:
@@ -439,6 +491,34 @@ dynamic_lists_html = (
      if top_upside else "")
 )
 
+# ── Whole-market movers block ────────────────────────────────
+watch_set = set(tickers)
+
+def mkt_ticker_cell(s):
+    star = ' <span class="mkt-star" title="In your watchlist">★</span>' if s["ticker"] in watch_set else ""
+    name = (s["name"][:22] + "…") if len(s["name"]) > 23 else s["name"]
+    return f'<span class="tt-ticker">{s["ticker"]}</span>{star}<div class="mkt-name">{name}</div>'
+
+def mkt_table(title, items, middle_fn):
+    if not items: return ""
+    rows = "".join(
+        f'<tr><td class="mkt-rank">{i}</td><td>{mkt_ticker_cell(s)}</td>'
+        f'<td class="mkt-mid">{middle_fn(s)}</td><td class="mkt-pct">{pct_cell(s["pct"])}</td></tr>'
+        for i, s in enumerate(items, 1))
+    return f'<div class="mkt-sub">{title}</div><table class="tt-table">{rows}</table>'
+
+market_tables = (
+    mkt_table("📈 Top Gainers", market_gainers, lambda s: f'<span class="tt-price">${s["price"]:.2f}</span>') +
+    mkt_table("💰 Most Traded ($ volume)", market_traded, lambda s: f'<span class="tt-amt">{fmt_amount(s["trade_amount"])}</span>') +
+    mkt_table("📉 Top Losers", market_losers, lambda s: f'<span class="tt-price">${s["price"]:.2f}</span>')
+)
+market_html = (
+    '<div class="section-title">🌎 Whole Market Movers</div>'
+    f'<div class="card"><div class="mkt-note">All US stocks, not just your list · ★ = on your watchlist</div>{market_tables}</div>'
+    if market_tables else
+    '<div class="section-title">🌎 Whole Market Movers</div><div class="card"><span class="neutral">Market screener data unavailable this run.</span></div>'
+)
+
 # ── Sector groups ─────────────────────────────────────────────
 stock_map = {s["ticker"]: s for s in stocks}
 sector_html = ""
@@ -547,6 +627,15 @@ html = f"""<!DOCTYPE html>
   .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
   .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
   .tt-price {{ color: #94a3b8; width: 80px; }}
+  .mkt-note {{ font-size: 0.72rem; color: #64748b; margin-bottom: 6px; }}
+  .mkt-sub {{ font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;
+              letter-spacing: .06em; margin: 14px 0 4px; }}
+  .mkt-sub:first-of-type {{ margin-top: 4px; }}
+  .mkt-rank {{ color: #475569; font-size: 0.75rem; width: 22px; }}
+  .mkt-name {{ font-size: 0.7rem; color: #64748b; font-weight: 400; }}
+  .mkt-star {{ color: #fbbf24; font-size: 0.75rem; }}
+  .mkt-mid {{ text-align: right; }}
+  .mkt-pct {{ text-align: right; white-space: nowrap; }}
   .disclaimer {{ margin-top: 20px; font-size: 0.73rem; color: #475569;
                  border-top: 1px solid #1e2330; padding-top: 12px; }}
 </style>
@@ -557,6 +646,7 @@ html = f"""<!DOCTYPE html>
   {summary_html}
   {signals_html}
   {dynamic_lists_html}
+  {market_html}
   {sector_html}
   <div class="section-title">📰 Top Headlines</div>
   <ul class="news-list">{news_items}</ul>
@@ -596,6 +686,8 @@ if tg_token and tg_chat_id:
         ("📉 Top Losing",        top_losing,   lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  ▼{s['pct']:+.2f}%"),
         ("💰 Top Trade Amount",  top_trade,    lambda s: f"{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
         ("🎯 Top Analyst Upside", top_upside,  lambda s: f"{s['ticker']:<5} → ${s['target']:.2f} ({s['upside']:+.1f}%)"),
+        ("🌎 Market Top Gainers", market_gainers[:5], lambda s: f"{s['ticker']:<5} ${s['price']:>8.2f}  ▲{s['pct']:+.2f}%"),
+        ("🌎 Market Most Traded", market_traded[:5],  lambda s: f"{s['ticker']:<5} {fmt_amount(s['trade_amount']):<10}  {'▲' if s['pct']>=0 else '▼'}{s['pct']:+.2f}%"),
     ]:
         if not items: continue
         lines.append(f"\n`{label}`")
