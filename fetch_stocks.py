@@ -88,8 +88,9 @@ for ticker in tickers:
             pass
 
         trade_amount = price * today_vol if today_vol else None
+        name = info.get("shortName") or info.get("longName") or ticker
         stocks.append({
-            "ticker": ticker, "price": price, "change": change, "pct": pct,
+            "ticker": ticker, "name": name, "price": price, "change": change, "pct": pct,
             "low52": low52, "high52": high52, "range_pct": range_pct,
             "target": target, "upside": upside,
             "week_pct": week_pct, "high_volume": high_volume,
@@ -100,7 +101,7 @@ for ticker in tickers:
     except Exception as e:
         print(f"Warning: failed to fetch {ticker}: {e}")
         stocks.append({
-            "ticker": ticker, "price": None, "change": None, "pct": None,
+            "ticker": ticker, "name": ticker, "price": None, "change": None, "pct": None,
             "low52": None, "high52": None, "range_pct": None,
             "target": None, "upside": None, "week_pct": None, "high_volume": False,
             "today_vol": None, "trade_amount": None,
@@ -486,38 +487,49 @@ top_gaining  = sorted(all_rankable, key=lambda s: s["pct"], reverse=True)[:N]
 top_losing   = sorted(all_rankable, key=lambda s: s["pct"])[:N]
 top_upside   = sorted([s for s in valid if s["upside"] is not None], key=lambda s: s["upside"], reverse=True)[:N]
 
-def ranked_rows(items, cols_fn):
-    return "".join(
-        f'<tr>{"".join(f"<td>{c}</td>" for c in cols_fn(s))}</tr>'
-        for s in items
-    )
-
 def pct_cell(val):
     cls = "up plain" if val >= 0 else "down plain"
     arrow = "▲" if val >= 0 else "▼"
     return f'<span class="{cls}">{arrow}{val:+.2f}%</span>'
 
-def ranked_html(title, items, cols_fn):
-    rows = ranked_rows(items, cols_fn)
-    return f'<div class="section-title">{title}</div><div class="card"><table class="tt-table">{rows}</table></div>'
+def dl_item(s, primary, sub_parts):
+    pct_html = pct_cell(s["pct"]) if s["pct"] is not None else '<span class="neutral">—</span>'
+    sub = " · ".join(p for p in sub_parts if p)
+    return (
+        f'<div class="dl-item">'
+        f'<div class="dl-top"><span class="tt-ticker">{s["ticker"]}</span>'
+        f'<span class="dl-primary">{primary}</span>{pct_html}</div>'
+        + (f'<div class="dl-sub">{sub}</div>' if sub else '')
+        + '</div>'
+    )
+
+def detail_list_html(title, items, primary_fn, sub_fn):
+    rows = "".join(dl_item(s, primary_fn(s), sub_fn(s)) for s in items)
+    return f'<div class="section-title">{title}</div><div class="card dl-card">{rows}</div>'
+
+def rsi_label(s):
+    if s.get("rsi") is None: return None
+    r = s["rsi"]
+    tag = " 🔥 overbought" if r > 70 else (" 🧊 oversold" if r < 30 else "")
+    return f'RSI {r:.0f}{tag}'
+
+def week_label(s):
+    if s.get("week_pct") is None: return None
+    return f'{"▲" if s["week_pct"] >= 0 else "▼"}{s["week_pct"]:+.1f}% wk'
 
 dynamic_lists_html = (
-    ranked_html("💰 Top Trade Amount", top_trade,
-        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
-                   f'<span class="tt-amt">{fmt_amount(s["trade_amount"])}</span>',
-                   pct_cell(s["pct"])]) +
-    ranked_html("📈 Top Increasing", top_gaining,
-        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
-                   f'<span class="tt-price">${s["price"]:.2f}</span>',
-                   pct_cell(s["pct"])]) +
-    ranked_html("📉 Top Decreasing", top_losing,
-        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
-                   f'<span class="tt-price">${s["price"]:.2f}</span>',
-                   pct_cell(s["pct"])]) +
-    (ranked_html("🎯 Top Analyst Upside", top_upside,
-        lambda s: [f'<span class="tt-ticker">{s["ticker"]}</span>',
-                   f'<span class="tt-price">${s["price"]:.2f}</span>',
-                   f'<span class="up plain">→ ${s["target"]:.2f} ({s["upside"]:+.1f}%)</span>'])
+    detail_list_html("💰 Top Trade Amount", top_trade,
+        lambda s: f'<span class="tt-amt">{fmt_amount(s["trade_amount"])}</span>',
+        lambda s: [s.get("name"), f'${s["price"]:.2f}', rsi_label(s), week_label(s)]) +
+    detail_list_html("📈 Top Increasing", top_gaining,
+        lambda s: f'<span class="tt-price">${s["price"]:.2f}</span>',
+        lambda s: [s.get("name"), fmt_amount(s.get("trade_amount")), rsi_label(s), week_label(s)]) +
+    detail_list_html("📉 Top Decreasing", top_losing,
+        lambda s: f'<span class="tt-price">${s["price"]:.2f}</span>',
+        lambda s: [s.get("name"), fmt_amount(s.get("trade_amount")), rsi_label(s), week_label(s)]) +
+    (detail_list_html("🎯 Top Analyst Upside", top_upside,
+        lambda s: f'<span class="up plain">→ ${s["target"]:.2f} <span class="dl-upside">+{s["upside"]:.1f}%</span></span>',
+        lambda s: [s.get("name"), f'now ${s["price"]:.2f}', rsi_label(s), week_label(s)])
      if top_upside else "")
 )
 
@@ -670,8 +682,15 @@ html = f"""<!DOCTYPE html>
   .sig-list-ticker {{ font-weight: 700; color: #f8fafc; min-width: 46px; flex-shrink: 0; }}
   .sig-list-reason {{ color: #94a3b8; }}
   .tt-ticker {{ font-weight: 700; color: #f8fafc; width: 60px; }}
-  .tt-amt {{ font-weight: 600; color: #94a3b8; width: 100px; }}
-  .tt-price {{ color: #94a3b8; width: 80px; }}
+  .tt-amt {{ font-weight: 600; color: #94a3b8; }}
+  .tt-price {{ color: #94a3b8; }}
+  .dl-card {{ padding: 8px 16px; }}
+  .dl-item {{ padding: 8px 0; border-bottom: 1px solid #1a2236; }}
+  .dl-item:last-child {{ border-bottom: none; }}
+  .dl-top {{ display: flex; align-items: center; gap: 8px; }}
+  .dl-primary {{ flex: 1; text-align: right; font-size: 0.9rem; font-weight: 500; }}
+  .dl-sub {{ font-size: 0.72rem; color: #475569; margin-top: 3px; }}
+  .dl-upside {{ font-weight: 700; color: #4ade80; }}
   .mkt-note {{ font-size: 0.68rem; color: #64748b; margin-bottom: 8px; }}
   .mkt-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }}
   .mkt-col {{ min-width: 0; }}
@@ -700,8 +719,8 @@ html = f"""<!DOCTYPE html>
   <div class="date">{date_str}</div>
   {market_overview_html}
   {market_html}
-  {signals_html}
   {dynamic_lists_html}
+  {signals_html}
   {sector_html}
   <div class="section-title">📰 Top Headlines</div>
   <ul class="news-list">{news_items}</ul>
